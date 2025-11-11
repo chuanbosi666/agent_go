@@ -3,7 +3,7 @@ package memory
 import (
 	"context"
 
-	"github.com/openai/openai-go/v2/responses"
+	"github.com/openai/openai-go/v3/responses"
 )
 
 // A Session stores conversation history for a specific session, allowing

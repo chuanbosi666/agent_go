@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/openai/openai-go/v2/responses"
+	"github.com/openai/openai-go/v3/responses"
 )
 
 // Input can be either a string or a list of TResponseInputItem.

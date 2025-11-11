@@ -165,7 +165,7 @@ import (
     "fmt"
     "github.com/demo/nvgo"
     "github.com/modelcontextprotocol/go-sdk/mcp"
-    "github.com/openai/openai-go/v2"
+    "github.com/openai/openai-go/v3"
 )
 
 func main() {
@@ -210,7 +210,7 @@ import (
     "fmt"
     "github.com/demo/nvgo"
     "github.com/modelcontextprotocol/go-sdk/mcp"
-    "github.com/openai/openai-go/v2"
+    "github.com/openai/openai-go/v3"
 )
 
 func main() {

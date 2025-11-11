@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/openai/openai-go/v2/packages/param"
+	"github.com/openai/openai-go/v3/packages/param"
 )
 
 // A Tool that can be used in an Agent.
@@ -35,7 +35,7 @@ type FunctionTool struct {
 	// The name of the tool, as shown to the LLM. Generally the name of the function.
 	Name string
 
-	// A description of the tool, as shown to the LLM.
+	// A description of the tool, as shown to the LLM.1``
 	Description string
 
 	// The JSON schema for the tool's parameters.

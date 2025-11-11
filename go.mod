@@ -1,11 +1,11 @@
-module github.com/chuanbosi666/agent_go
+module github.com/agent_go
 
 go 1.25
 
 require (
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/modelcontextprotocol/go-sdk v0.3.0
-	github.com/openai/openai-go/v2 v2.1.1
+	github.com/openai/openai-go/v3 v3.7.0
 	github.com/stretchr/testify v1.11.0
 )
 

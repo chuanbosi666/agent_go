@@ -2,9 +2,13 @@ package nvgo
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
-	"github.com/demo/nvgo/memory"
-	"github.com/openai/openai-go/v2/responses"
+	"github.com/agent_go/memory"
+	"github.com/openai/openai-go/v3"
+	"github.com/openai/openai-go/v3/option"
+	"github.com/openai/openai-go/v3/responses"
 )
 
 type RunItem interface {
@@ -144,6 +148,27 @@ func Run(ctx context.Context, startingAgent *Agent, input string) (*RunResult, e
 // agent. Agents may perform handoffs, so we don't know the specific type of the output.
 func (r Runner) Run(ctx context.Context, startingAgent *Agent, input string) (*RunResult, error) {
 	return r.run(ctx, startingAgent, InputString(input))
+}
+
+type MaxTurnsExceededError struct {
+	MaxTurns uint64
+}
+
+func (e *MaxTurnsExceededError) Error() string {
+	return fmt.Sprintf("max turns exceeded: reached limit of %d turns", e.MaxTurns)
+}
+
+type GuardrailTripwireTriggeredError struct {
+	GuardrailName string // 哪个护栏触发了
+	OutputInfo    any    // 护栏返回的详细信息
+	IsInput       bool   // true = 输入护栏, false = 输出护栏
+}
+
+func (g *GuardrailTripwireTriggeredError) Error() string {
+	if g.IsInput {
+		return fmt.Sprintf("input guardrail '%s' triggered", g.GuardrailName)
+	}
+	return fmt.Sprintf("output guardrail '%s' triggered", g.GuardrailName)
 }
 
 func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*RunResult, error) {

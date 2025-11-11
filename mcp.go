@@ -8,9 +8,9 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/demo/nvgo/internal/strictschema"
+	"github.com/agent_go/internal/strictschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/openai/openai-go/v2/packages/param"
+	"github.com/openai/openai-go/v3/packages/param"
 )
 
 // MCPToolFilterContext provides context for tool filter functions.

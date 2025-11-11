@@ -1,7 +1,7 @@
 package nvgo
 
 import (
-	"github.com/openai/openai-go/v2"
+	"github.com/openai/openai-go/v3"
 )
 
 // MCPConfig provides configuration parameters for MCP servers.
@@ -101,6 +101,7 @@ func (a *Agent) WithModel(model string) *Agent {
 }
 
 // WithClient sets the client to use.
+// use openai 
 func (a *Agent) WithClient(client openai.Client) *Agent {
 	a.Client = client
 	return a

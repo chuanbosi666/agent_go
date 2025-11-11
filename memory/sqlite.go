@@ -9,7 +9,7 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/openai/openai-go/v2/responses"
+	"github.com/openai/openai-go/v3/responses"
 )
 
 const (

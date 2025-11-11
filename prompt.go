@@ -3,8 +3,8 @@ package nvgo
 import (
 	"context"
 
-	"github.com/openai/openai-go/v2/packages/param"
-	"github.com/openai/openai-go/v2/responses"
+	"github.com/openai/openai-go/v3/packages/param"
+	"github.com/openai/openai-go/v3/responses"
 )
 
 // Prompt configuration to use for interacting with an OpenAI model.

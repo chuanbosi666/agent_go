@@ -1312,30 +1312,30 @@ jobs:
 1. **快速开始**:
    ```markdown
    ## Quick Start
-
+   
    ```go
    package main
-
+   
    import (
        "context"
        "fmt"
        "github.com/demo/nvgo"
        "github.com/openai/openai-go/v2"
    )
-
+   
    func main() {
        client := openai.NewClient()
-
+   
        agent := nvgo.New("assistant").
            WithInstructions("You are a helpful assistant.").
            WithModel("gpt-4").
            WithClient(client)
-
+   
        result, err := nvgo.Run(context.Background(), agent, "Hello!")
        if err != nil {
            panic(err)
        }
-
+   
        fmt.Println(result.FinalOutput)
    }
    ```
@@ -1686,7 +1686,7 @@ result, err := nvgo.Run(ctx, router, "I need support")
    ```go
    type Agent struct {
        // ... 现有字段
-
+   
        // 新增字段
        Tools            []Tool              // 直接配置的工具
        HandoffTargets   map[string]*Agent   // Handoff 目标 Agent
@@ -1698,7 +1698,7 @@ result, err := nvgo.Run(ctx, router, "I need support")
    ```go
    type RunConfig struct {
        // ... 现有字段
-
+   
        // 新增字段
        EnableTracing    bool                 // 启用追踪
        Logger           Logger               // 日志记录器
@@ -1713,7 +1713,7 @@ result, err := nvgo.Run(ctx, router, "I need support")
        TurnCount uint64
        Cause     error
    }
-
+   
    func (e *RunError) Error() string
    func (e *RunError) Unwrap() error
    ```
@@ -2042,10 +2042,10 @@ func main() {
    ```bash
    # macOS
    brew install golangci-lint
-
+   
    # Linux
    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
-
+   
    # Windows
    go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
    ```
@@ -2063,7 +2063,7 @@ func main() {
    ```bash
    # macOS
    brew install pre-commit
-
+   
    # Linux/Windows
    pip install pre-commit
    ```
@@ -2195,4 +2195,4 @@ NVGo 是一个设计良好但实现未完成的多智能体框架。架构清晰
 
 **文档版本**: v1.0
 **最后更新**: 2025-10-28
-**维护者**: (待定)
+**维护者**: (待定)w
