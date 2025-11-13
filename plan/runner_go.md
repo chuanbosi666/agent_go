@@ -5,7 +5,7 @@
 - **创建时间**: 2025-11-11
 - **学习目标**: 手写完成 `runner.go` 的核心实现
 - **学习方式**: 分步指导 + 自主编写 + 代码审查
-- **当前状态**: 准备开始
+- **当前状态**: 阶段 4 完成，准备阶段 5
 
 ---
 
@@ -880,19 +880,19 @@ func TestMaxTurnsExceededError(t *testing.T) {
   - [x] 任务 1.1: 补充导入包
   - [x] 任务 1.2: 定义错误类型
 
-- [ ] 阶段 2: 基础框架 ⏳ **进行中**
-  - [ ] 任务 2.1: 实现主函数框架
-  - [ ] 任务 2.2: 理解数据流
+- [x] 阶段 2: 基础框架 ✅ **已完成**
+  - [x] 任务 2.1: 实现主函数框架
+  - [x] 任务 2.2: 理解数据流
 
-- [ ] 阶段 3: LLM 调用
-  - [ ] 任务 3.1: 准备 LLM 调用参数
-  - [ ] 任务 3.2: 调用 LLM（占位符）
-  - [ ] 任务 3.3: 实现 getMCPTools 辅助函数
+- [x] 阶段 3: LLM 调用 ✅ **已完成**
+  - [x] 任务 3.1: 准备 LLM 调用参数
+  - [x] 任务 3.2: 调用 LLM（占位符）
+  - [x] 任务 3.3: 实现 getMCPTools 辅助函数
 
-- [ ] 阶段 4: 工具调用
-  - [ ] 任务 4.1: 解析工具调用
-  - [ ] 任务 4.2: 执行单个工具
-  - [ ] 任务 4.3: 查找工具
+- [x] 阶段 4: 工具调用 ✅ **已完成**
+  - [x] 任务 4.1: 解析工具调用
+  - [x] 任务 4.2: 执行单个工具
+  - [x] 任务 4.3: 查找工具
 
 - [ ] 阶段 5: Guardrails
   - [ ] 任务 5.1: 运行输入 Guardrails
@@ -914,6 +914,18 @@ func TestMaxTurnsExceededError(t *testing.T) {
 [2025-11-11] 完成任务 1.1 - 添加了必要的导入包（context, fmt, errors, openai-go, option）
 [2025-11-11] 完成任务 1.2 - 定义了两个错误类型（MaxTurnsExceededError, GuardrailTripwireTriggeredError）
 [2025-11-11] 阶段 1 完成 - 代码通过 go fmt 格式化和 go build 编译检查
+[2025-11-12] 完成任务 2.1 - 实现了主函数框架，添加了主循环的 6 个子步骤 TODO
+[2025-11-12] 完成任务 2.2 - 添加了输出 Guardrails 的 TODO 标记
+[2025-11-12] 阶段 2 完成 - run() 方法的 7 步框架结构清晰完整
+[2025-11-12] 完成任务 3.3 - 实现了 getMCPTools 辅助函数（调用 GetAllFunctionTools）
+[2025-11-12] 完成任务 3.1 - 实现了 LLM 调用参数收集（模型名、Instructions、工具列表、ModelSettings、历史消息）
+[2025-11-12] 完成任务 3.2 - 添加了 LLM 调用占位符，记录响应到 RawResponses
+[2025-11-12] 阶段 3 完成 - 代码编译通过，所有参数准备就绪
+[2025-11-12] 完成任务 4.3 - 实现了 findTool 辅助函数（根据工具名查找工具）
+[2025-11-12] 完成任务 4.2 - 实现了 executeTool 辅助函数（类型转换、IsEnabled检查、工具执行、错误处理）
+[2025-11-12] 完成任务 4.1 - 实现了工具调用解析（使用 AsAny() 类型判断、处理 ResponseFunctionToolCall）
+[2025-11-12] 阶段 4 完成 - 创建了 RunItemWrapper 包装类型，使用 ResponseInputItemParamOfFunctionCallOutput 创建输出
+[2025-11-12] 代码编译通过 - 所有工具调用逻辑实现完毕
 
 ```
 
@@ -1005,36 +1017,53 @@ X does not implement Y (missing method Z)
 
 ## 🎯 下一步行动
 
-**现在开始**: 阶段 2 - 任务 2.1 - 实现主函数框架
+**现在开始**: 阶段 5 - Guardrails
 
-### 任务详情
+### 阶段概述
 
-在 `runner.go` 第 174-176 行，替换：
+阶段 5 实现输入和输出护栏（Guardrails）的执行逻辑，用于在运行前后对内容进行检查和过滤。
+
+### 主要任务
+
+#### 任务 5.1: 运行输入 Guardrails
+在主循环之前（第 181-182 行），替换：
 ```go
-func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*RunResult, error) {
-	return nil, nil  // ← 删除这个
-}
+// 2. 运行输入 Guardrails
+// TODO: 实现输入 guardrail 逻辑
 ```
 
-实现包含 7 个步骤的完整框架（参考上面阶段 2 的详细说明）：
-1. 初始化结果
-2. 运行输入 Guardrails（TODO）
-3. 初始化循环变量
-4. 主循环（包含 6 个子步骤，都是 TODO）
-5. 检查是否超过最大循环次数
-6. 运行输出 Guardrails（TODO）
-7. 设置最后的 Agent
+实现：
+- 合并 RunConfig 和 Agent 的输入 Guardrails
+- 运行所有输入 Guardrails
+- 检查是否触发 tripwire
+- 保存 guardrail 结果到 RunResult
+
+#### 任务 5.2: 运行输出 Guardrails
+在主循环之后（约第 217-218 行），替换：
+```go
+// 6. 运行输出 Guardrails
+// TODO: 实现输出 guardrail 逻辑
+```
+
+实现：
+- 合并 RunConfig 和 Agent 的输出 Guardrails
+- 只在有 FinalOutput 时运行
+- 检查是否触发 tripwire
+- 保存 guardrail 结果到 RunResult
 
 ### 验收标准
-- [ ] 函数有明确的 7 个步骤
-- [ ] 主循环正确实现
-- [ ] 所有待实现部分都有 TODO 注释
+- [ ] 输入 Guardrails 正确执行
+- [ ] 输出 Guardrails 正确执行
+- [ ] Tripwire 触发时返回正确的错误
 - [ ] 代码能编译通过
+
+### 📖 参考文档
+详细实现指导请参考 md 文档第 714-773 行（阶段 5 的详细说明）。
 
 **祝你学习愉快！** 🚀
 
 ---
 
-**文档版本**: v1.1
-**最后更新**: 2025-11-11（阶段 1 已完成，开始阶段 2）
-**下次审查**: 完成阶段 2 任务 2.1 后
+**文档版本**: v1.4
+**最后更新**: 2025-11-12（阶段 4 已完成，准备阶段 5）
+**下次审查**: 完成阶段 5 任务后

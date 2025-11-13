@@ -2,12 +2,12 @@ package nvgo
 
 import (
 	"context"
-	"errors"
+	// "errors"  // 阶段 5 (Guardrails) 会使用
 	"fmt"
 
 	"github.com/agent_go/memory"
-	"github.com/openai/openai-go/v3"
-	"github.com/openai/openai-go/v3/option"
+	// "github.com/openai/openai-go/v3"  // 阶段 3 后期实现真正的 LLM 调用时会使用
+	// "github.com/openai/openai-go/v3/option"  // 阶段 3 后期实现真正的 LLM 调用时会使用
 	"github.com/openai/openai-go/v3/responses"
 )
 
@@ -16,6 +16,18 @@ type RunItem interface {
 	ToInputItem() responses.ResponseInputItemUnionParam
 }
 
+type RunItemWrapper struct{
+	item responses.ResponseInputItemUnionParam
+}
+
+func (w RunItemWrapper) isRunItem(){}
+func (w RunItemWrapper) ToInputItem() responses.ResponseInputItemUnionParam{
+	return w.item
+}
+
+func WrapRunItem(item responses.ResponseInputItemUnionParam) RunItem{
+	return RunItemWrapper{item: item}
+}
 type Usage struct {
 	// Total requests made to the LLM API.
 	Requests uint64
@@ -172,5 +184,171 @@ func (g *GuardrailTripwireTriggeredError) Error() string {
 }
 
 func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*RunResult, error) {
-	return nil, nil
+
+	result := &RunResult{
+		Input:        CopyInput(input),
+		NewItems:     []RunItem{},
+		RawResponses: []ModelResponse{},
+	}
+	// 2. 运行输入 Guardrails
+	// TODO: 实现输入 guardrail 逻辑
+
+	currentAgent := startingAgent
+	turnCount := uint64(0)
+	maxTurns := r.Config.MaxTurns
+	if maxTurns == 0 {
+		maxTurns = DefaultMaxTurns
+
+	}
+
+	for turnCount < maxTurns {
+		turnCount++
+		model := r.Config.Model
+		if model == "" {
+			model = currentAgent.Model
+		}
+
+		var instructions string
+
+		if currentAgent.Instructions != nil {
+			var err error
+			instructions, err = currentAgent.Instructions.GetInstructions(ctx, currentAgent)
+			if err != nil {
+				return nil, fmt.Errorf("get instruction: %w", err)
+			}
+		}
+
+		var tools []Tool
+		tools, err := getMCPTools(ctx, currentAgent, true)
+		modelsettings := currentAgent.ModelSettings.Resolve(r.Config.ModelSettings)
+
+		var historyItems []responses.ResponseInputItemUnionParam
+		if r.Config.Session != nil {
+			items, err := r.Config.Session.GetItems(ctx, -1)
+			if err != nil {
+				return nil, fmt.Errorf("load session history: %w", err)
+			}
+			historyItems = items
+		}
+
+		var modelResponse ModelResponse
+		modelResponse = ModelResponse{
+			Output: []responses.ResponseOutputItemUnion{},
+		}
+		result.RawResponses = append(result.RawResponses, modelResponse)
+		_ = model
+		_ =instructions
+        _ = tools
+        _ = err
+        _ = modelsettings
+        _ = historyItems
+
+		for _, outputItem := range modelResponse.Output {
+			switch item := outputItem.AsAny().(type){
+			case responses.ResponseOutputMessage:
+				_ = item
+
+			case responses.ResponseFunctionToolCall:
+				tool, found := findTool(tools, item.Name)
+				if !found{
+					errorOutput := responses.ResponseInputItemParamOfFunctionCallOutput(
+						item.CallID,
+						fmt.Sprintf("Tool %s not found", item.Name),
+					)
+					result.NewItems = append(result.NewItems, WrapRunItem(errorOutput))
+					continue
+				}
+				toolResult, err := executeTool(ctx, currentAgent, tool, item.Arguments)
+				if err !=nil{
+					errorOutput := responses.ResponseInputItemParamOfFunctionCallOutput(
+						item.CallID,
+						fmt.Sprintf("Tool execution failed: %v", err),
+					)
+					result.NewItems = append(result.NewItems, WrapRunItem(errorOutput))
+					continue
+				}
+
+				var outputStr string
+				switch  v := toolResult.(type) {
+				case string:
+					outputStr = v
+				default:
+					outputStr = fmt.Sprintf("%v", v)
+				}
+				successOutput :=responses.ResponseInputItemParamOfFunctionCallOutput(
+					item.CallID,
+					outputStr,
+			)
+				result.NewItems = append(result.NewItems, WrapRunItem(successOutput))
+				//切换agent
+			default:
+			}
+		}
+
+		// 4.3 执行工具调用
+		// TODO: 执行工具并收集结果
+
+		// 4.4 检查是否完成
+		// TODO: 检查是否有最终输出
+
+		// 4.5 保存到 Session
+		// TODO: 将新项保存到 Session
+
+		// 4.6 检查是否需要继续循环
+		// TODO: 如果没有待处理的工具调用，退出循环
+	}
+
+	if turnCount >= maxTurns {
+		return nil, &MaxTurnsExceededError{MaxTurns: maxTurns}
+	}
+
+	// 6. 运行输出 Guardrails
+	// TODO: 实现输出 guardrail 逻辑
+
+	result.LastAgent = currentAgent
+
+	return result, nil
+}
+
+func getMCPTools(ctx context.Context, agent *Agent, strict bool) ([]Tool, error) {
+	if len(agent.MCPServers) == 0 {
+		return nil, nil
+	}
+	return GetAllFunctionTools(ctx, agent.MCPServers, strict, agent)
+}
+func findTool(tools []Tool, name string)(Tool, bool){
+	for _, t := range tools{
+		if t.ToolName() == name{
+			return t, true
+		}
+	} 
+	return nil, false
+}
+
+func executeTool(ctx context.Context, agent *Agent, tool Tool, arguments string)(any, error){
+	funcTool, ok := tool.(FunctionTool)
+	if !ok {
+		return nil,fmt.Errorf("tool is not a FunctionTool")
+	}
+	if funcTool.IsEnabled != nil {
+		enabled, err := funcTool.IsEnabled.IsEnabled(ctx, agent)
+		if err != nil{
+			return nil,fmt.Errorf("check tool enabled:%w", err)
+		}
+		if !enabled{
+			return nil, fmt.Errorf("tool %s is disabled", funcTool.ToolName())
+		}
+	}
+	result, err :=funcTool.OnInvokeTool(ctx, arguments)
+	
+	if err != nil{
+		if funcTool.FailureErrorFunction != nil{
+			errorFunc := *funcTool.FailureErrorFunction
+			val, _ := errorFunc(ctx, err)
+			return val, nil
+		}
+		val, _ := DefaultToolErrorFunction(ctx, err)
+		return val,nil
+	}
+	return result, nil
 }
