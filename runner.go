@@ -16,18 +16,19 @@ type RunItem interface {
 	ToInputItem() responses.ResponseInputItemUnionParam
 }
 
-type RunItemWrapper struct{
+type RunItemWrapper struct {
 	item responses.ResponseInputItemUnionParam
 }
 
-func (w RunItemWrapper) isRunItem(){}
-func (w RunItemWrapper) ToInputItem() responses.ResponseInputItemUnionParam{
+func (w RunItemWrapper) isRunItem() {}
+func (w RunItemWrapper) ToInputItem() responses.ResponseInputItemUnionParam {
 	return w.item
 }
 
-func WrapRunItem(item responses.ResponseInputItemUnionParam) RunItem{
+func WrapRunItem(item responses.ResponseInputItemUnionParam) RunItem {
 	return RunItemWrapper{item: item}
 }
+
 type Usage struct {
 	// Total requests made to the LLM API.
 	Requests uint64
@@ -190,8 +191,23 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 		NewItems:     []RunItem{},
 		RawResponses: []ModelResponse{},
 	}
-	// 2. 运行输入 Guardrails
-	// TODO: 实现输入 guardrail 逻辑
+	inputGuardrails := append(r.Config.InputGuardrails, startingAgent.InputGuardrails...)
+
+	for _, gr := range inputGuardrails {
+		grResult, err := gr.Run(ctx, startingAgent, input)
+		if err != nil {
+			return nil, fmt.Errorf("input guardrail %q failed: %w", gr.Name, err)
+		}
+		result.InputGuardrailResults = append(result.InputGuardrailResults, grResult)
+
+		if grResult.Output.TripwireTriggered {
+			return nil, &GuardrailTripwireTriggeredError{
+				GuardrailName: gr.Name,
+				OutputInfo:    grResult.Output.OutputInfo,
+				IsInput:       true,
+			}
+		}
+	}
 
 	currentAgent := startingAgent
 	turnCount := uint64(0)
@@ -237,20 +253,20 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 		}
 		result.RawResponses = append(result.RawResponses, modelResponse)
 		_ = model
-		_ =instructions
-        _ = tools
-        _ = err
-        _ = modelsettings
-        _ = historyItems
+		_ = instructions
+		_ = tools
+		_ = err
+		_ = modelsettings
+		_ = historyItems
 
 		for _, outputItem := range modelResponse.Output {
-			switch item := outputItem.AsAny().(type){
+			switch item := outputItem.AsAny().(type) {
 			case responses.ResponseOutputMessage:
 				_ = item
 
 			case responses.ResponseFunctionToolCall:
 				tool, found := findTool(tools, item.Name)
-				if !found{
+				if !found {
 					errorOutput := responses.ResponseInputItemParamOfFunctionCallOutput(
 						item.CallID,
 						fmt.Sprintf("Tool %s not found", item.Name),
@@ -259,7 +275,7 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 					continue
 				}
 				toolResult, err := executeTool(ctx, currentAgent, tool, item.Arguments)
-				if err !=nil{
+				if err != nil {
 					errorOutput := responses.ResponseInputItemParamOfFunctionCallOutput(
 						item.CallID,
 						fmt.Sprintf("Tool execution failed: %v", err),
@@ -269,41 +285,68 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 				}
 
 				var outputStr string
-				switch  v := toolResult.(type) {
+				switch v := toolResult.(type) {
 				case string:
 					outputStr = v
 				default:
 					outputStr = fmt.Sprintf("%v", v)
 				}
-				successOutput :=responses.ResponseInputItemParamOfFunctionCallOutput(
+				successOutput := responses.ResponseInputItemParamOfFunctionCallOutput(
 					item.CallID,
 					outputStr,
-			)
+				)
 				result.NewItems = append(result.NewItems, WrapRunItem(successOutput))
 				//切换agent
+			// TODO:添加handoff，实现智能体切换
 			default:
 			}
 		}
+		for _, outputItem := range modelResponse.Output {
+			if msg, ok := outputItem.AsAny().(responses.ResponseOutputMessage); ok {
+				result.FinalOutput = msg.Content
+				break
+			}
+		}
 
-		// 4.3 执行工具调用
-		// TODO: 执行工具并收集结果
+		if r.Config.Session != nil && len(result.NewItems) > 0 {
+			var itemsToSave []responses.ResponseInputItemUnionParam
+			for _, item := range result.NewItems {
+				itemsToSave = append(itemsToSave, item.ToInputItem())
+			}
 
-		// 4.4 检查是否完成
-		// TODO: 检查是否有最终输出
+			if err := r.Config.Session.AddItems(ctx, itemsToSave); err != nil {
+				return nil, fmt.Errorf("save to session: %w", err)
+			}
+		}
+		if result.FinalOutput != nil {
+			break
+		}
 
-		// 4.5 保存到 Session
-		// TODO: 将新项保存到 Session
-
-		// 4.6 检查是否需要继续循环
-		// TODO: 如果没有待处理的工具调用，退出循环
 	}
 
 	if turnCount >= maxTurns {
 		return nil, &MaxTurnsExceededError{MaxTurns: maxTurns}
 	}
+	if result.FinalOutput == nil {
+		result.LastAgent = currentAgent
+		return result, nil
+	}
+	outputGuardrail := append(r.Config.OutputGuardrails, currentAgent.OutputGuardrails...)
+	for _, gr := range outputGuardrail {
+		grResult, err := gr.Run(ctx, currentAgent, result.FinalOutput)
+		if err != nil {
+			return nil, fmt.Errorf("output guardrail %q failed: %w", gr.Name, err)
+		}
 
-	// 6. 运行输出 Guardrails
-	// TODO: 实现输出 guardrail 逻辑
+		result.OutputGuardrailResults = append(result.OutputGuardrailResults, grResult)
+		if grResult.Output.TripwireTriggered {
+			return nil, &GuardrailTripwireTriggeredError{
+				GuardrailName: gr.Name,
+				OutputInfo:    grResult.Output.OutputInfo,
+				IsInput:       false,
+			}
+		}
+	}
 
 	result.LastAgent = currentAgent
 
@@ -316,39 +359,39 @@ func getMCPTools(ctx context.Context, agent *Agent, strict bool) ([]Tool, error)
 	}
 	return GetAllFunctionTools(ctx, agent.MCPServers, strict, agent)
 }
-func findTool(tools []Tool, name string)(Tool, bool){
-	for _, t := range tools{
-		if t.ToolName() == name{
+func findTool(tools []Tool, name string) (Tool, bool) {
+	for _, t := range tools {
+		if t.ToolName() == name {
 			return t, true
 		}
-	} 
+	}
 	return nil, false
 }
 
-func executeTool(ctx context.Context, agent *Agent, tool Tool, arguments string)(any, error){
+func executeTool(ctx context.Context, agent *Agent, tool Tool, arguments string) (any, error) {
 	funcTool, ok := tool.(FunctionTool)
 	if !ok {
-		return nil,fmt.Errorf("tool is not a FunctionTool")
+		return nil, fmt.Errorf("tool is not a FunctionTool")
 	}
 	if funcTool.IsEnabled != nil {
 		enabled, err := funcTool.IsEnabled.IsEnabled(ctx, agent)
-		if err != nil{
-			return nil,fmt.Errorf("check tool enabled:%w", err)
+		if err != nil {
+			return nil, fmt.Errorf("check tool enabled:%w", err)
 		}
-		if !enabled{
+		if !enabled {
 			return nil, fmt.Errorf("tool %s is disabled", funcTool.ToolName())
 		}
 	}
-	result, err :=funcTool.OnInvokeTool(ctx, arguments)
-	
-	if err != nil{
-		if funcTool.FailureErrorFunction != nil{
+	result, err := funcTool.OnInvokeTool(ctx, arguments)
+
+	if err != nil {
+		if funcTool.FailureErrorFunction != nil {
 			errorFunc := *funcTool.FailureErrorFunction
 			val, _ := errorFunc(ctx, err)
 			return val, nil
 		}
 		val, _ := DefaultToolErrorFunction(ctx, err)
-		return val,nil
+		return val, nil
 	}
 	return result, nil
 }

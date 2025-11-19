@@ -5,7 +5,7 @@
 - **创建时间**: 2025-11-11
 - **学习目标**: 手写完成 `runner.go` 的核心实现
 - **学习方式**: 分步指导 + 自主编写 + 代码审查
-- **当前状态**: 阶段 4 完成，准备阶段 5
+- **当前状态**: 阶段 7 测试完成，准备实现真正的 LLM 调用
 
 ---
 
@@ -18,7 +18,7 @@
 3. ✅ 管理 Agent 循环（最多 MaxTurns 次）
 4. ✅ 处理 Guardrails（输入/输出护栏）
 5. ✅ 管理 Session（会话历史）
-6. ✅ 处理 Handoff（智能体切换）
+6.  处理 Handoff（智能体切换）
 
 ---
 
@@ -894,17 +894,28 @@ func TestMaxTurnsExceededError(t *testing.T) {
   - [x] 任务 4.2: 执行单个工具
   - [x] 任务 4.3: 查找工具
 
-- [ ] 阶段 5: Guardrails
-  - [ ] 任务 5.1: 运行输入 Guardrails
-  - [ ] 任务 5.2: 运行输出 Guardrails
+- [x] 阶段 5: Guardrails ✅ **已完成**
+  - [x] 任务 5.1: 运行输入 Guardrails
+  - [x] 任务 5.2: 运行输出 Guardrails
 
-- [ ] 阶段 6: Session
-  - [ ] 任务 6.1: 加载历史消息
-  - [ ] 任务 6.2: 保存新消息
+- [x] 阶段 6: Session ✅ **已完成**
+  - [x] 任务 6.1: 加载历史消息（已在阶段 3 实现）
+  - [x] 任务 6.2: 保存新消息
 
-- [ ] 阶段 7: 测试
-  - [ ] 任务 7.1: 测试最大循环次数
-  - [ ] 任务 7.2: 测试错误类型
+- [x] 补充阶段: 完善循环逻辑 ✅ **已完成**
+  - [x] 任务 A.1: 清理已实现的 TODO 注释
+  - [x] 任务 A.2: 实现检查完成条件
+  - [x] 任务 A.3: 实现循环退出逻辑
+
+- [x] 阶段 7: 测试 ✅ **已完成**
+  - [x] 任务 B.1: 测试错误类型
+  - [x] 任务 B.2: 测试 findTool 函数
+  - [x] 任务 B.3: 测试 RunItemWrapper
+
+- [ ] 阶段 8: 实现真正的 LLM 调用
+  - [ ] 任务 C.1: 实现 Responses API 调用
+  - [ ] 任务 C.2: 实现 Chat Completions API 调用
+  - [ ] 任务 C.3: 集成测试
 
 ### 完成记录
 
@@ -926,6 +937,22 @@ func TestMaxTurnsExceededError(t *testing.T) {
 [2025-11-12] 完成任务 4.1 - 实现了工具调用解析（使用 AsAny() 类型判断、处理 ResponseFunctionToolCall）
 [2025-11-12] 阶段 4 完成 - 创建了 RunItemWrapper 包装类型，使用 ResponseInputItemParamOfFunctionCallOutput 创建输出
 [2025-11-12] 代码编译通过 - 所有工具调用逻辑实现完毕
+[2025-11-16] 完成任务 5.1 - 实现输入 Guardrails（合并护栏列表、执行检查、处理 tripwire）
+[2025-11-16] 完成任务 5.2 - 实现输出 Guardrails（检查 FinalOutput、执行护栏、正确访问嵌套结构）
+[2025-11-16] 阶段 5 完成 - 修复了赋值运算符错误（:= vs =）和嵌套结构访问（grResult.Output.TripwireTriggered）
+[2025-11-16] 代码编译通过 - 输入/输出护栏逻辑完整实现
+[2025-11-17] 完成任务 6.2 - 实现保存新消息到 Session（类型转换、调用 AddItems、错误包装）
+[2025-11-17] 阶段 6 完成 - 修复了错误格式化符号（%d → %w），会话管理完整实现
+[2025-11-17] 完成任务 A.1 - 清理已实现的 TODO 注释（删除"执行工具调用"和"检查是否需要继续循环"）
+[2025-11-17] 完成任务 A.2 - 实现检查完成条件（遍历 Output 提取 ResponseOutputMessage 作为 FinalOutput）
+[2025-11-17] 完成任务 A.3 - 实现循环退出逻辑（FinalOutput 不为 nil 时使用 break 退出）
+[2025-11-17] 补充阶段完成 - 主循环逻辑完整，支持两种退出条件（MaxTurns 和 FinalOutput）
+[2025-11-17] 代码编译通过 - 循环控制逻辑完善，保留 handoff TODO 供后续实现
+[2025-11-19] 完成任务 B.1 - 编写了 3 个错误类型测试（MaxTurnsExceededError, GuardrailTripwireTriggeredError 输入/输出）
+[2025-11-19] 完成任务 B.2 - 编写了 findTool 函数测试（使用子测试验证查找存在/不存在的工具）
+[2025-11-19] 完成任务 B.3 - 编写了 RunItemWrapper 测试（验证包装/解包和接口实现）
+[2025-11-19] 阶段 7 完成 - 所有测试通过（5 个测试函数，7 个测试用例，go test -v 全部 PASS）
+[2025-11-19] 测试验证成功 - runner_test.go 包含完整的单元测试，验证了错误类型、工具查找、包装器功能
 
 ```
 
@@ -1017,53 +1044,72 @@ X does not implement Y (missing method Z)
 
 ## 🎯 下一步行动
 
-**现在开始**: 阶段 5 - Guardrails
+**现在开始**: 阶段 8 - 实现真正的 LLM 调用
 
 ### 阶段概述
 
-阶段 5 实现输入和输出护栏（Guardrails）的执行逻辑，用于在运行前后对内容进行检查和过滤。
+前面的阶段中，我们使用了占位符来代替真正的 LLM 调用（参见阶段 3）。现在需要实现真正的 LLM API 调用，让 Agent 能够真正与 OpenAI 的模型交互。
 
-### 主要任务
+根据 nvgo 的设计，支持两种 API 调用方式：
+1. **Responses API** - 当 Agent 有 Prompt 时使用
+2. **Chat Completions API** - 传统的聊天完成 API
 
-#### 任务 5.1: 运行输入 Guardrails
-在主循环之前（第 181-182 行），替换：
-```go
-// 2. 运行输入 Guardrails
-// TODO: 实现输入 guardrail 逻辑
-```
+### 阶段 8 任务清单
 
-实现：
-- 合并 RunConfig 和 Agent 的输入 Guardrails
-- 运行所有输入 Guardrails
-- 检查是否触发 tripwire
-- 保存 guardrail 结果到 RunResult
+#### 任务 C.1: 实现 Responses API 调用
 
-#### 任务 5.2: 运行输出 Guardrails
-在主循环之后（约第 217-218 行），替换：
-```go
-// 6. 运行输出 Guardrails
-// TODO: 实现输出 guardrail 逻辑
-```
+**目标**: 实现使用 OpenAI Responses API 的 LLM 调用
 
-实现：
-- 合并 RunConfig 和 Agent 的输出 Guardrails
-- 只在有 FinalOutput 时运行
-- 检查是否触发 tripwire
-- 保存 guardrail 结果到 RunResult
+**实现位置**: runner.go 主循环中的 LLM 调用部分（当前是占位符）
 
-### 验收标准
-- [ ] 输入 Guardrails 正确执行
-- [ ] 输出 Guardrails 正确执行
-- [ ] Tripwire 触发时返回正确的错误
-- [ ] 代码能编译通过
+**需要实现的内容**:
+1. 检查 `currentAgent.Prompt != nil`
+2. 构建 Responses API 请求参数
+3. 调用 `openai.Responses.Create()`
+4. 处理响应并转换为 `ModelResponse`
+5. 处理错误情况
 
-### 📖 参考文档
-详细实现指导请参考 md 文档第 714-773 行（阶段 5 的详细说明）。
-
-**祝你学习愉快！** 🚀
+**参考资料**:
+- OpenAI Responses API 文档
+- `github.com/openai/openai-go/v3/responses` 包
 
 ---
 
-**文档版本**: v1.4
-**最后更新**: 2025-11-12（阶段 4 已完成，准备阶段 5）
-**下次审查**: 完成阶段 5 任务后
+#### 任务 C.2: 实现 Chat Completions API 调用
+
+**目标**: 实现传统的 Chat Completions API 调用（当没有 Prompt 时）
+
+**需要实现的内容**:
+1. 检查 `currentAgent.Prompt == nil`
+2. 构建 Chat Completions API 请求参数
+3. 调用 `openai.Chat.Completions.Create()`
+4. 处理响应并转换为 `ModelResponse`
+5. 处理错误情况
+
+---
+
+#### 任务 C.3: 集成测试
+
+**目标**: 编写集成测试验证 LLM 调用功能
+
+**需要测试的内容**:
+1. Responses API 调用是否正常工作
+2. Chat Completions API 调用是否正常工作
+3. 错误处理是否正确
+
+---
+
+### 实现提示
+
+阶段 8 是一个较为复杂的任务，涉及真实的 API 调用。建议：
+
+1. **先阅读 OpenAI SDK 文档**，了解 Responses API 和 Chat Completions API 的使用方法
+2. **查看项目中是否有类似的调用示例**
+3. **逐步实现**，先实现一个 API，测试通过后再实现另一个
+4. **注意错误处理**，API 调用可能失败，需要妥善处理
+
+---
+
+**文档版本**: v1.8
+**最后更新**: 2025-11-19（阶段 7 测试完成，准备实现 LLM 调用）
+**下次审查**: 完成阶段 8 后

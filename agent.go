@@ -101,7 +101,7 @@ func (a *Agent) WithModel(model string) *Agent {
 }
 
 // WithClient sets the client to use.
-// use openai 
+// use openai
 func (a *Agent) WithClient(client openai.Client) *Agent {
 	a.Client = client
 	return a
