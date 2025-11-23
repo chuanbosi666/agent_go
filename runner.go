@@ -6,8 +6,10 @@ import (
 	"fmt"
 
 	"github.com/agent_go/memory"
-	// "github.com/openai/openai-go/v3"  // 阶段 3 后期实现真正的 LLM 调用时会使用
-	// "github.com/openai/openai-go/v3/option"  // 阶段 3 后期实现真正的 LLM 调用时会使用
+	"github.com/openai/openai-go/v3"
+	_ "github.com/openai/openai-go/v3"        // 阶段 3 后期实现真正的 LLM 调用时会使用
+	_ "github.com/openai/openai-go/v3/option" // 阶段 3 后期实现真正的 LLM 调用时会使用
+	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/openai/openai-go/v3/responses"
 )
 
@@ -214,7 +216,6 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 	maxTurns := r.Config.MaxTurns
 	if maxTurns == 0 {
 		maxTurns = DefaultMaxTurns
-
 	}
 
 	for turnCount < maxTurns {
@@ -236,6 +237,9 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 
 		var tools []Tool
 		tools, err := getMCPTools(ctx, currentAgent, true)
+		if err != nil{
+			return nil, fmt.Errorf("failed to get MCP tools: %w", err)
+		}
 		modelsettings := currentAgent.ModelSettings.Resolve(r.Config.ModelSettings)
 
 		var historyItems []responses.ResponseInputItemUnionParam
@@ -248,16 +252,122 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 		}
 
 		var modelResponse ModelResponse
-		modelResponse = ModelResponse{
-			Output: []responses.ResponseOutputItemUnion{},
+
+		if currentAgent.Prompt != nil{
+			promptParam, hasPrompt, err := PromptUtil().ToModelInput(ctx, currentAgent.Prompt, currentAgent)
+			if err != nil{
+				return nil, fmt.Errorf("get prompt: %w", err)
+			}
+			if !hasPrompt{
+				return nil, fmt.Errorf("prompt is required but not provided")
+			}
+
+			var allInputItems []responses.ResponseInputItemUnionParam
+			allInputItems = append(allInputItems, historyItems...)
+
+			if turnCount == 1{
+				currentInputItems := inputToItems(input)
+				allInputItems = append(allInputItems, currentInputItems...)
+			}
+
+			toolParams := toolsToParams(tools)
+
+			createParams := responses.ResponseNewParams{
+				Model: model,
+				Prompt: promptParam,
+				Input: responses.ResponseNewParamsInputUnion{
+					OfInputItemList: responses.ResponseInputParam(allInputItems),
+				},
+			}
+
+			if instructions != ""{
+				createParams.Instructions = param.NewOpt(instructions)
+			}
+			if len(toolParams) > 0{
+				createParams.Tools = toolParams
+			}
+			if modelsettings.Temperature.Valid(){
+				createParams.Temperature = modelsettings.Temperature
+			}
+			if modelsettings.MaxTokens.Valid(){
+				createParams.MaxOutputTokens = modelsettings.MaxTokens
+			}
+			if modelsettings.TopP.Valid(){
+				createParams.TopP = modelsettings.TopP
+			}
+			client := currentAgent.Client
+
+			resp, err := client.Responses.New(ctx, createParams)
+			if err != nil{
+				return nil, fmt.Errorf("call repsonses API: %w", err)
+			}
+
+			modelResponse = ModelResponse{
+				Output: resp.Output,
+				ResponseID: resp.ID,
+			}
+				modelResponse.Usage = &Usage{
+					Requests: 				1,
+					InputTokens: 			uint64(resp.Usage.InputTokens),
+					InputTokensDetails: 	resp.Usage.InputTokensDetails,
+					OutputTokens: 			uint64(resp.Usage.OutputTokens),
+					OutputTokensDetails: 	resp.Usage.OutputTokensDetails,
+					TotalTokens: 			uint64(resp.Usage.TotalTokens),		
+			}
+		}else{
+			var messages []openai.ChatCompletionMessageParamUnion
+
+			if instructions != ""{
+				messages = append(messages, openai.SystemMessage(instructions))
+			}
+
+			if turnCount == 1{
+				switch v := input.(type){
+				case InputString:
+					messages = append(messages, openai.UserMessage(string(v)))
+				}
+			}
+
+			chatParams := openai.ChatCompletionNewParams{
+				Model: model,
+				Messages: messages,
+			}
+			if modelsettings.Temperature.Valid(){
+				chatParams.Temperature = modelsettings.Temperature
+			}
+			if modelsettings.MaxTokens.Valid(){
+				chatParams.MaxTokens = modelsettings.MaxTokens
+			}
+			if modelsettings.TopP.Valid(){
+				chatParams.TopP = modelsettings.TopP
+			}
+
+			client := currentAgent.Client
+			chatresp, err := client.Chat.Completions.New(ctx, chatParams)
+			if err != nil{
+				return nil, fmt.Errorf("call chat completions API:%w", err)
+			}
+
+			modelResponse = ModelResponse{
+				Output: []responses.ResponseOutputItemUnion{},
+			}
+
+			if len(chatresp.Choices)>0{
+				choice := chatresp.Choices[0]
+				if choice.Message.Content != ""{
+					//暂时只输出文本，不转化为repsonseoutputMessage
+					//直接设置finaloutput
+					result.FinalOutput = choice.Message.Content
+				}
+			}
+			modelResponse.Usage = &Usage{
+				Requests: 1,
+				InputTokens: uint64(chatresp.Usage.PromptTokens),
+				OutputTokens: uint64(chatresp.Usage.CompletionTokens),
+				TotalTokens: uint64(chatresp.Usage.TotalTokens),
+			}
 		}
 		result.RawResponses = append(result.RawResponses, modelResponse)
-		_ = model
-		_ = instructions
-		_ = tools
-		_ = err
-		_ = modelsettings
-		_ = historyItems
 
 		for _, outputItem := range modelResponse.Output {
 			switch item := outputItem.AsAny().(type) {
@@ -394,4 +504,45 @@ func executeTool(ctx context.Context, agent *Agent, tool Tool, arguments string)
 		return val, nil
 	}
 	return result, nil
+}
+
+func inputToItems(input Input) []responses.ResponseInputItemUnionParam{
+	switch v := input.(type){
+	case InputString:
+		return []responses.ResponseInputItemUnionParam{
+			responses.ResponseInputItemParamOfMessage(
+				string(v),
+				responses.EasyInputMessageRole(responses.ResponseInputMessageItemRoleUser),),
+		}
+	case InputItems:
+		return []responses.ResponseInputItemUnionParam(v)
+	default:
+		panic(fmt.Errorf("unexpected Input type %T", v))
+	}
+}
+
+func toolsToParams(tools []Tool) []responses.ToolUnionParam{
+	if len(tools) == 0{
+		return nil		
+	}
+
+	params := make([]responses.ToolUnionParam, 0, len(tools))
+
+	for _, tool := range tools{
+		funcTool, ok:= tool.(FunctionTool)
+		if !ok{
+			continue
+		}
+
+		toolParam := responses.ToolUnionParam{
+			OfFunction: &responses.FunctionToolParam{
+				Name: funcTool.Name,
+				Description: param.NewOpt(funcTool.Description),
+				Parameters: funcTool.ParamsJSONSchema,
+				Strict: funcTool.StrictJSONSchema,
+			},
+		}
+		params = append(params, toolParam)
+	}
+	return params
 }
