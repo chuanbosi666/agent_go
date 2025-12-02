@@ -59,6 +59,8 @@ type Agent struct {
 	// Runs only if the agent produces a final output.
 	OutputGuardrails []OutputGuardrail
 
+	Tools []FunctionTool
+
 	// Optional output type describing the output. If not provided, the output will be a simple string.
 	OutputType OutputTypeInterface
 }
@@ -163,5 +165,15 @@ func (a *Agent) AddOutputGuardrail(gr OutputGuardrail) *Agent {
 // WithOutputType sets the output type.
 func (a *Agent) WithOutputType(outputType OutputTypeInterface) *Agent {
 	a.OutputType = outputType
+	return a
+}
+
+func (a *Agent) WithTools(tools []FunctionTool) *Agent {
+	a.Tools = tools
+	return a
+}
+
+func (a *Agent) AddTools(tools []FunctionTool) *Agent {
+	a.Tools = append(a.Tools, tools...)
 	return a
 }
