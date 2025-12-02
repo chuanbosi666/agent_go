@@ -7,8 +7,7 @@ import (
 
 	"github.com/agent_go/memory"
 	"github.com/openai/openai-go/v3"
-	_ "github.com/openai/openai-go/v3"        // 阶段 3 后期实现真正的 LLM 调用时会使用
-	_ "github.com/openai/openai-go/v3/option" // 阶段 3 后期实现真正的 LLM 调用时会使用
+	_ "github.com/openai/openai-go/v3/option"
 	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/openai/openai-go/v3/responses"
 )
@@ -137,6 +136,17 @@ type RunConfig struct {
 
 	// Optional session for the run.
 	Session memory.Session
+
+	// HandoffResolver resolves an agent name to an Agent instance.
+	// Called when a ResponseHandoff is encountered during agent execution.
+	// If nil, handoff requests will result in an error.
+	HandoffResolver func(ctx context.Context, agentName string) (*Agent, error)
+
+	//toolRouter 可选的工具路由器，用于动态选择相关工具
+	ToolRouter ToolRouter
+
+	//ToolRoutingThreshold 触发路由的工具数量阈值 默认为5
+	ToolRoutingThreshold int
 }
 
 // Run executes startingAgent with the provided input using the DefaultRunner.
@@ -217,7 +227,7 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 	if maxTurns == 0 {
 		maxTurns = DefaultMaxTurns
 	}
-
+	var accumulatedHistory []responses.ResponseInputItemUnionParam
 	for turnCount < maxTurns {
 		turnCount++
 		model := r.Config.Model
@@ -236,9 +246,21 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 		}
 
 		var tools []Tool
-		tools, err := getMCPTools(ctx, currentAgent, true)
-		if err != nil{
+		tools, err := getAgentTools(ctx, currentAgent, true)
+		if err != nil {
 			return nil, fmt.Errorf("failed to get MCP tools: %w", err)
+		}
+
+		threshold := r.Config.ToolRoutingThreshold
+		if threshold == 0 {
+			threshold = 5
+		}
+
+		if r.Config.ToolRouter != nil && len(tools) > threshold {
+			routedTools, routeErr := r.Config.ToolRouter.RouteTools(ctx, input, tools)
+			if routeErr == nil {
+				tools = routedTools
+			}
 		}
 		modelsettings := currentAgent.ModelSettings.Resolve(r.Config.ModelSettings)
 
@@ -253,98 +275,104 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 
 		var modelResponse ModelResponse
 
-		if currentAgent.Prompt != nil{
+		if currentAgent.Prompt != nil {
 			promptParam, hasPrompt, err := PromptUtil().ToModelInput(ctx, currentAgent.Prompt, currentAgent)
-			if err != nil{
+			if err != nil {
 				return nil, fmt.Errorf("get prompt: %w", err)
 			}
-			if !hasPrompt{
+			if !hasPrompt {
 				return nil, fmt.Errorf("prompt is required but not provided")
 			}
 
 			var allInputItems []responses.ResponseInputItemUnionParam
-			allInputItems = append(allInputItems, historyItems...)
+			if len(historyItems) > 0 {
+				allInputItems = append(allInputItems, historyItems...)
+			} else {
+				allInputItems = append(allInputItems, accumulatedHistory...)
+			}
 
-			if turnCount == 1{
+			if turnCount == 1 {
 				currentInputItems := inputToItems(input)
 				allInputItems = append(allInputItems, currentInputItems...)
+
+				accumulatedHistory = append(accumulatedHistory, currentInputItems...)
 			}
 
 			toolParams := toolsToParams(tools)
 
 			createParams := responses.ResponseNewParams{
-				Model: model,
+				Model:  model,
 				Prompt: promptParam,
 				Input: responses.ResponseNewParamsInputUnion{
 					OfInputItemList: responses.ResponseInputParam(allInputItems),
 				},
 			}
 
-			if instructions != ""{
+			if instructions != "" {
 				createParams.Instructions = param.NewOpt(instructions)
 			}
-			if len(toolParams) > 0{
+			if len(toolParams) > 0 {
 				createParams.Tools = toolParams
 			}
-			if modelsettings.Temperature.Valid(){
+			if modelsettings.Temperature.Valid() {
 				createParams.Temperature = modelsettings.Temperature
 			}
-			if modelsettings.MaxTokens.Valid(){
+			if modelsettings.MaxTokens.Valid() {
 				createParams.MaxOutputTokens = modelsettings.MaxTokens
 			}
-			if modelsettings.TopP.Valid(){
+			if modelsettings.TopP.Valid() {
 				createParams.TopP = modelsettings.TopP
 			}
 			client := currentAgent.Client
 
 			resp, err := client.Responses.New(ctx, createParams)
-			if err != nil{
+			if err != nil {
 				return nil, fmt.Errorf("call repsonses API: %w", err)
 			}
 
 			modelResponse = ModelResponse{
-				Output: resp.Output,
+				Output:     resp.Output,
 				ResponseID: resp.ID,
 			}
-				modelResponse.Usage = &Usage{
-					Requests: 				1,
-					InputTokens: 			uint64(resp.Usage.InputTokens),
-					InputTokensDetails: 	resp.Usage.InputTokensDetails,
-					OutputTokens: 			uint64(resp.Usage.OutputTokens),
-					OutputTokensDetails: 	resp.Usage.OutputTokensDetails,
-					TotalTokens: 			uint64(resp.Usage.TotalTokens),		
+			modelResponse.Usage = &Usage{
+				Requests:            1,
+				InputTokens:         uint64(resp.Usage.InputTokens),
+				InputTokensDetails:  resp.Usage.InputTokensDetails,
+				OutputTokens:        uint64(resp.Usage.OutputTokens),
+				OutputTokensDetails: resp.Usage.OutputTokensDetails,
+				TotalTokens:         uint64(resp.Usage.TotalTokens),
 			}
-		}else{
+		} else {
 			var messages []openai.ChatCompletionMessageParamUnion
 
-			if instructions != ""{
+			if instructions != "" {
 				messages = append(messages, openai.SystemMessage(instructions))
 			}
 
-			if turnCount == 1{
-				switch v := input.(type){
+			if turnCount == 1 {
+				switch v := input.(type) {
 				case InputString:
 					messages = append(messages, openai.UserMessage(string(v)))
 				}
 			}
 
 			chatParams := openai.ChatCompletionNewParams{
-				Model: model,
+				Model:    model,
 				Messages: messages,
 			}
-			if modelsettings.Temperature.Valid(){
+			if modelsettings.Temperature.Valid() {
 				chatParams.Temperature = modelsettings.Temperature
 			}
-			if modelsettings.MaxTokens.Valid(){
+			if modelsettings.MaxTokens.Valid() {
 				chatParams.MaxTokens = modelsettings.MaxTokens
 			}
-			if modelsettings.TopP.Valid(){
+			if modelsettings.TopP.Valid() {
 				chatParams.TopP = modelsettings.TopP
 			}
 
 			client := currentAgent.Client
 			chatresp, err := client.Chat.Completions.New(ctx, chatParams)
-			if err != nil{
+			if err != nil {
 				return nil, fmt.Errorf("call chat completions API:%w", err)
 			}
 
@@ -352,19 +380,19 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 				Output: []responses.ResponseOutputItemUnion{},
 			}
 
-			if len(chatresp.Choices)>0{
+			if len(chatresp.Choices) > 0 {
 				choice := chatresp.Choices[0]
-				if choice.Message.Content != ""{
+				if choice.Message.Content != "" {
 					//暂时只输出文本，不转化为repsonseoutputMessage
 					//直接设置finaloutput
 					result.FinalOutput = choice.Message.Content
 				}
 			}
 			modelResponse.Usage = &Usage{
-				Requests: 1,
-				InputTokens: uint64(chatresp.Usage.PromptTokens),
+				Requests:     1,
+				InputTokens:  uint64(chatresp.Usage.PromptTokens),
 				OutputTokens: uint64(chatresp.Usage.CompletionTokens),
-				TotalTokens: uint64(chatresp.Usage.TotalTokens),
+				TotalTokens:  uint64(chatresp.Usage.TotalTokens),
 			}
 		}
 		result.RawResponses = append(result.RawResponses, modelResponse)
@@ -407,9 +435,9 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 				)
 				result.NewItems = append(result.NewItems, WrapRunItem(successOutput))
 				//切换agent
-			// TODO:添加handoff，实现智能体切换
-			default:
+				//	case responses.ResponseHandoff:
 			}
+
 		}
 		for _, outputItem := range modelResponse.Output {
 			if msg, ok := outputItem.AsAny().(responses.ResponseOutputMessage); ok {
@@ -417,17 +445,60 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 				break
 			}
 		}
-
-		if r.Config.Session != nil && len(result.NewItems) > 0 {
+		// 将调用工具的结果进行保存，分别保存到session和历史中
+		if len(result.NewItems) > 0 {
 			var itemsToSave []responses.ResponseInputItemUnionParam
 			for _, item := range result.NewItems {
 				itemsToSave = append(itemsToSave, item.ToInputItem())
 			}
-
-			if err := r.Config.Session.AddItems(ctx, itemsToSave); err != nil {
-				return nil, fmt.Errorf("save to session: %w", err)
+			if r.Config.Session != nil {
+				if err := r.Config.Session.AddItems(ctx, itemsToSave); err != nil {
+					return nil, fmt.Errorf("save tool results to session:%w", err)
+				}
+			} else {
+				accumulatedHistory = append(accumulatedHistory, itemsToSave...)
 			}
 		}
+		//保存模型输出
+		if len(modelResponse.Output) > 0 {
+			var modelOutputItems []responses.ResponseInputItemUnionParam
+
+			for _, outputItem := range modelResponse.Output {
+				switch item := outputItem.AsAny().(type) {
+				case responses.ResponseOutputMessage:
+					outputParm := responses.ResponseOutputMessageParam{
+						ID:      item.ID,
+						Content: convertoutputContentToParam(item.Content),
+						Status:  item.Status,
+						Role:    item.Role,
+						Type:    item.Type,
+					}
+					inputItem := responses.ResponseInputItemUnionParam{
+						OfOutputMessage: &outputParm,
+					}
+					modelOutputItems = append(modelOutputItems, inputItem)
+				case responses.ResponseFunctionToolCall:
+					if r.Config.Session == nil {
+						funcCallParam := responses.ResponseInputItemParamOfFunctionCall(
+							item.Arguments,
+							item.CallID,
+							item.Name,
+						)
+						modelOutputItems = append(modelOutputItems, funcCallParam)
+					}
+				}
+			}
+			if len(modelOutputItems) > 0 {
+				if r.Config.Session != nil {
+					if err := r.Config.Session.AddItems(ctx, modelOutputItems); err != nil {
+						return nil, fmt.Errorf("save model output to session: %w", err)
+					}
+				} else {
+					accumulatedHistory = append(accumulatedHistory, modelOutputItems...)
+				}
+			}
+		}
+
 		if result.FinalOutput != nil {
 			break
 		}
@@ -457,17 +528,27 @@ func (r Runner) run(ctx context.Context, startingAgent *Agent, input Input) (*Ru
 			}
 		}
 	}
-
 	result.LastAgent = currentAgent
 
 	return result, nil
 }
 
-func getMCPTools(ctx context.Context, agent *Agent, strict bool) ([]Tool, error) {
-	if len(agent.MCPServers) == 0 {
-		return nil, nil
+func getAgentTools(ctx context.Context, agent *Agent, strict bool) ([]Tool, error) {
+	var allTools []Tool
+
+	if len(agent.MCPServers) > 0 {
+		mcpTools, err := GetAllFunctionTools(ctx, agent.MCPServers, strict, agent)
+		if err != nil {
+			return nil, err
+		}
+		allTools = append(allTools, mcpTools...)
 	}
-	return GetAllFunctionTools(ctx, agent.MCPServers, strict, agent)
+
+	for _, tool := range agent.Tools {
+		allTools = append(allTools, tool)
+	}
+
+	return allTools, nil
 }
 func findTool(tools []Tool, name string) (Tool, bool) {
 	for _, t := range tools {
@@ -506,13 +587,13 @@ func executeTool(ctx context.Context, agent *Agent, tool Tool, arguments string)
 	return result, nil
 }
 
-func inputToItems(input Input) []responses.ResponseInputItemUnionParam{
-	switch v := input.(type){
+func inputToItems(input Input) []responses.ResponseInputItemUnionParam {
+	switch v := input.(type) {
 	case InputString:
 		return []responses.ResponseInputItemUnionParam{
 			responses.ResponseInputItemParamOfMessage(
 				string(v),
-				responses.EasyInputMessageRole(responses.ResponseInputMessageItemRoleUser),),
+				responses.EasyInputMessageRole(responses.ResponseInputMessageItemRoleUser)),
 		}
 	case InputItems:
 		return []responses.ResponseInputItemUnionParam(v)
@@ -521,28 +602,43 @@ func inputToItems(input Input) []responses.ResponseInputItemUnionParam{
 	}
 }
 
-func toolsToParams(tools []Tool) []responses.ToolUnionParam{
-	if len(tools) == 0{
-		return nil		
+func toolsToParams(tools []Tool) []responses.ToolUnionParam {
+	if len(tools) == 0 {
+		return nil
 	}
 
 	params := make([]responses.ToolUnionParam, 0, len(tools))
 
-	for _, tool := range tools{
-		funcTool, ok:= tool.(FunctionTool)
-		if !ok{
+	for _, tool := range tools {
+		funcTool, ok := tool.(FunctionTool)
+		if !ok {
 			continue
 		}
-
 		toolParam := responses.ToolUnionParam{
 			OfFunction: &responses.FunctionToolParam{
-				Name: funcTool.Name,
+				Name:        funcTool.Name,
 				Description: param.NewOpt(funcTool.Description),
-				Parameters: funcTool.ParamsJSONSchema,
-				Strict: funcTool.StrictJSONSchema,
+				Parameters:  funcTool.ParamsJSONSchema,
+				Strict:      funcTool.StrictJSONSchema,
 			},
 		}
 		params = append(params, toolParam)
 	}
 	return params
+}
+
+func convertoutputContentToParam(content []responses.ResponseOutputMessageContentUnion) []responses.ResponseOutputMessageContentUnionParam {
+	var result []responses.ResponseOutputMessageContentUnionParam
+	for _, c := range content {
+		switch item := c.AsAny().(type) {
+		case responses.ResponseOutputText:
+			textParam := item.ToParam()
+			param := responses.ResponseOutputMessageContentUnionParam{
+				OfOutputText: &textParam,
+			}
+			result = append(result, param)
+		default:
+		}
+	}
+	return result
 }
