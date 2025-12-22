@@ -1,11 +1,18 @@
-package nvgo
+package nvgo_test
 
 import (
 	"context"
-	"github.com/openai/openai-go/v3/packages/param"
-	"github.com/openai/openai-go/v3/responses"
 	"strings"
 	"testing"
+
+	"nvgo/pkg/agent"
+	"nvgo/pkg/types"
+	"nvgo/pkg/pattern"
+	"nvgo/pkg/runner"
+	"nvgo/pkg/tool"
+
+	"github.com/openai/openai-go/v3/packages/param"
+	"github.com/openai/openai-go/v3/responses"
 )
 
 type MockSession struct {
@@ -57,7 +64,7 @@ func (m *MockSession) GetAllItems() []responses.ResponseInputItemUnionParam {
 }
 
 func TestMaxTurnsExceededError(t *testing.T) {
-	err := &MaxTurnsExceededError{MaxTurns: 10}
+	err := &runner.MaxTurnsExceededError{MaxTurns: 10}
 
 	expected := "max turns exceeded: reached limit of 10 turns"
 
@@ -68,7 +75,7 @@ func TestMaxTurnsExceededError(t *testing.T) {
 
 func TestGuardrailTripwireTriggeredError_Input(t *testing.T) {
 
-	err := &GuardrailTripwireTriggeredError{
+	err := &runner.GuardrailTripwireTriggeredError{
 		GuardrailName: "content_filter",
 		OutputInfo:    "input guardrail is running",
 		IsInput:       true,
@@ -81,7 +88,7 @@ func TestGuardrailTripwireTriggeredError_Input(t *testing.T) {
 }
 
 func TestGuardrailTripwireTriggeredError_Output(t *testing.T) {
-	err := &GuardrailTripwireTriggeredError{
+	err := &runner.GuardrailTripwireTriggeredError{
 		GuardrailName: "safety_check",
 		OutputInfo:    "output guardrail is running",
 		IsInput:       false,
@@ -95,12 +102,12 @@ func TestGuardrailTripwireTriggeredError_Output(t *testing.T) {
 }
 
 func TestFindTool(t *testing.T) {
-	tools := []Tool{
-		FunctionTool{Name: "get_weather"},
-		FunctionTool{Name: "send_email"},
+	tools := []tool.Tool{
+		tool.FunctionTool{Name: "get_weather"},
+		tool.FunctionTool{Name: "send_email"},
 	}
 	t.Run("FindExistingTool", func(t *testing.T) {
-		tool, found := findTool(tools, "get_weather")
+		tool, found := runner.FindTool(tools, "get_weather")
 
 		if !found {
 			t.Errorf("expected to find tool, but found is false")
@@ -116,7 +123,7 @@ func TestFindTool(t *testing.T) {
 	})
 
 	t.Run("FindNonExistingTool", func(t *testing.T) {
-		tool, found := findTool(tools, "non_existing_tool")
+		tool, found := runner.FindTool(tools, "non_existing_tool")
 
 		if found {
 			t.Error("expected not to find tool, but found is true")
@@ -134,7 +141,7 @@ func TestRunItemWrapper(t *testing.T) {
 			"test",
 			responses.EasyInputMessageRoleUser,
 		)
-		wrapper := WrapRunItem(testitem)
+		wrapper := runner.WrapRunItem(testitem)
 
 		if wrapper == nil {
 			t.Fatal("WrapRunItem returned nil")
@@ -149,9 +156,9 @@ func TestRunItemWrapper(t *testing.T) {
 			"test",
 			responses.EasyInputMessageRoleUser,
 		)
-		wrapper := WrapRunItem(testItem)
+		wrapper := runner.WrapRunItem(testItem)
 
-		_, ok := wrapper.(RunItem)
+		_, ok := wrapper.(runner.RunItem)
 		if !ok {
 			t.Error("RunItemWrapper does not implement RunItem interface")
 		}
@@ -164,8 +171,8 @@ func TestRunItemWrapper(t *testing.T) {
 func TestInputToItems(t *testing.T) {
 	t.Run("ConvertInputString", func(t *testing.T) {
 
-		input := InputString("Hello, world!")
-		items := inputToItems(input)
+		input := types.InputString("Hello, world!")
+		items := runner.InputToItems(input)
 
 		if len(items) != 1 {
 			t.Fatalf("expected 1 item, got %d", len(items))
@@ -177,7 +184,7 @@ func TestInputToItems(t *testing.T) {
 
 	t.Run("ConvertInputItems", func(t *testing.T) {
 
-		originalItems := InputItems{
+		originalItems := types.InputItems{
 			responses.ResponseInputItemParamOfMessage(
 				"message 1",
 				responses.EasyInputMessageRoleUser,
@@ -188,7 +195,7 @@ func TestInputToItems(t *testing.T) {
 			),
 		}
 
-		items := inputToItems(originalItems)
+		items := runner.InputToItems(originalItems)
 
 		if len(items) != 2 {
 			t.Fatalf("expected 2 items, got %d", len(items))
@@ -200,8 +207,8 @@ func TestInputToItems(t *testing.T) {
 func TestToolsToParams(t *testing.T) {
 	t.Run("EmptyToolList", func(t *testing.T) {
 		// 测试空工具列表
-		tools := []Tool{}
-		params := toolsToParams(tools)
+		tools := []tool.Tool{}
+		params := runner.ToolsToParams(tools)
 
 		if params != nil {
 			t.Errorf("expected nil for empty tools, got %v", params)
@@ -210,14 +217,14 @@ func TestToolsToParams(t *testing.T) {
 
 	t.Run("ConvertFunctionTools", func(t *testing.T) {
 		// 测试转换函数工具
-		tools := []Tool{
-			FunctionTool{
+		tools := []tool.Tool{
+			tool.FunctionTool{
 				Name:             "get_weather",
 				Description:      "Get current weather",
 				ParamsJSONSchema: map[string]any{"type": "object"},
 				StrictJSONSchema: param.NewOpt(true),
 			},
-			FunctionTool{
+			tool.FunctionTool{
 				Name:             "send_email",
 				Description:      "Send an email",
 				ParamsJSONSchema: map[string]any{"type": "object"},
@@ -225,7 +232,7 @@ func TestToolsToParams(t *testing.T) {
 			},
 		}
 
-		params := toolsToParams(tools)
+		params := runner.ToolsToParams(tools)
 
 		if len(params) != 2 {
 			t.Fatalf("expected 2 tool params, got %d", len(params))
@@ -255,15 +262,15 @@ func TestToolsToParams(t *testing.T) {
 		// 测试跳过非 FunctionTool 类型
 		// 注意：由于我们只有 FunctionTool 实现了 Tool 接口，
 		// 这个测试主要是验证类型转换逻辑的健壮性
-		tools := []Tool{
-			FunctionTool{
+		tools := []tool.Tool{
+			tool.FunctionTool{
 				Name:             "valid_tool",
 				Description:      "A valid tool",
 				ParamsJSONSchema: map[string]any{"type": "object"},
 			},
 		}
 
-		params := toolsToParams(tools)
+		params := runner.ToolsToParams(tools)
 
 		if len(params) != 1 {
 			t.Fatalf("expected 1 tool param, got %d", len(params))
@@ -372,8 +379,8 @@ func TestRunner_AccumulatedHistory(t *testing.T) {
 		// 我们只验证数据结构和逻辑
 
 		// 1. 模拟第一轮：用户输入
-		input := InputString("Hello")
-		inputItems := inputToItems(input)
+		input := types.InputString("Hello")
+		inputItems := runner.InputToItems(input)
 
 		if len(inputItems) != 1 {
 			t.Fatalf("expected 1 input item, got %d", len(inputItems))
@@ -463,22 +470,22 @@ func TestRunner_WithAndWithoutSession(t *testing.T) {
 
 func TestWrapAgentAsTool(t *testing.T) {
 	t.Run("BasicAgentWrapping", func(t *testing.T) {
-		subAgent := &Agent{
+		subAgent := &agent.Agent{
 			Name: "SubAgent",
 		}
 
-		tool := WrapAgentAsTool(subAgent, 5)
+		agentTool := pattern.WrapAgentAsTool(subAgent, 5)
 
 		expectedName := "Call_agent_SubAgent"
-		if tool.Name != expectedName {
-			t.Errorf("expected tool name %q, got %q", expectedName, tool.Name)
+		if agentTool.Name != expectedName {
+			t.Errorf("expected tool name %q, got %q", expectedName, agentTool.Name)
 		}
 
-		if tool.ParamsJSONSchema == nil {
+		if agentTool.ParamsJSONSchema == nil {
 			t.Error("expected non-nil ParamsJSONSchema")
 		}
 
-		if tool.OnInvokeTool == nil {
+		if agentTool.OnInvokeTool == nil {
 			t.Error("expected non-nil OnInvokeTool")
 		}
 
@@ -486,34 +493,34 @@ func TestWrapAgentAsTool(t *testing.T) {
 	})
 
 	t.Run("DefaultMaxTurns", func(t *testing.T) {
-		subAgent := &Agent{
+		subAgent := &agent.Agent{
 			Name: "TestAgent",
 		}
 
 		// 传入 0，应该使用 DefaultMaxTurns
-		tool := WrapAgentAsTool(subAgent, 0)
+		agentTool := pattern.WrapAgentAsTool(subAgent, 0)
 
-		if tool.Name != "Call_agent_TestAgent" {
-			t.Errorf("unexpected tool name: %s", tool.Name)
+		if agentTool.Name != "Call_agent_TestAgent" {
+			t.Errorf("unexpected tool name: %s", agentTool.Name)
 		}
 
 		t.Log("✅ DefaultMaxTurns applied when maxTurns is 0")
 	})
 
 	t.Run("ToolDescription", func(t *testing.T) {
-		subAgent := &Agent{
+		subAgent := &agent.Agent{
 			Name:         "ExpertAgent",
-			Instructions: InstructionsStr("You are an expert in Go programming."),
+			Instructions: agent.InstructionsStr("You are an expert in Go programming."),
 		}
 
-		tool := WrapAgentAsTool(subAgent, 5)
+		agentTool := pattern.WrapAgentAsTool(subAgent, 5)
 
 		// 验证描述包含 agent 信息
-		if tool.Description == "" {
+		if agentTool.Description == "" {
 			t.Error("expected non-empty description")
 		}
 
-		if !strings.Contains(tool.Description, "ExpertAgent") {
+		if !strings.Contains(agentTool.Description, "ExpertAgent") {
 			t.Error("expected description to contain agent name")
 		}
 
@@ -521,14 +528,14 @@ func TestWrapAgentAsTool(t *testing.T) {
 	})
 
 	t.Run("ParamsJSONSchemaStructure", func(t *testing.T) {
-		subAgent := &Agent{
+		subAgent := &agent.Agent{
 			Name: "SchemaTestAgent",
 		}
 
-		tool := WrapAgentAsTool(subAgent, 5)
+		agentTool := pattern.WrapAgentAsTool(subAgent, 5)
 
 		// 验证 schema 结构
-		schema := tool.ParamsJSONSchema
+		schema := agentTool.ParamsJSONSchema
 		if schema == nil {
 			t.Fatal("ParamsJSONSchema is nil")
 		}
@@ -570,17 +577,17 @@ func TestWrapAgentAsTool(t *testing.T) {
 	})
 
 	t.Run("ToolImplementsFunctionTool", func(t *testing.T) {
-		subAgent := &Agent{
+		subAgent := &agent.Agent{
 			Name: "InterfaceTestAgent",
 		}
 
-		tool := WrapAgentAsTool(subAgent, 5)
+		agentTool := pattern.WrapAgentAsTool(subAgent, 5)
 
 		// 验证返回的是 FunctionTool 类型
-		var _ FunctionTool = tool
+		var _ tool.FunctionTool = agentTool
 
 		// 验证实现了 Tool 接口
-		var toolInterface Tool = tool
+		var toolInterface tool.Tool = agentTool
 		if toolInterface.ToolName() != "Call_agent_InterfaceTestAgent" {
 			t.Errorf("ToolName() returned unexpected value: %s", toolInterface.ToolName())
 		}
@@ -590,17 +597,17 @@ func TestWrapAgentAsTool(t *testing.T) {
 
 	t.Run("AgentWithTools", func(t *testing.T) {
 		// 测试主 Agent 可以包含子 Agent 作为工具
-		subAgent := &Agent{
+		subAgent := &agent.Agent{
 			Name:         "HelperAgent",
-			Instructions: InstructionsStr("I help with specific tasks."),
+			Instructions: agent.InstructionsStr("I help with specific tasks."),
 		}
 
-		subAgentTool := WrapAgentAsTool(subAgent, 3)
+		subAgentTool := pattern.WrapAgentAsTool(subAgent, 3)
 
-		mainAgent := &Agent{
+		mainAgent := &agent.Agent{
 			Name:         "MainAgent",
-			Instructions: InstructionsStr("I am the main agent."),
-			Tools:        []FunctionTool{subAgentTool},
+			Instructions: agent.InstructionsStr("I am the main agent."),
+			Tools:        []tool.FunctionTool{subAgentTool},
 		}
 
 		// 验证主 Agent 包含子 Agent 工具
@@ -617,7 +624,7 @@ func TestWrapAgentAsTool(t *testing.T) {
 }
 
 func TestKeywordRouter(t *testing.T) {
-	router := &KeywordRouter{
+	router := &tool.KeywordRouter{
 		ToolKeywords: map[string][]string{
 			"get_weather": {"天气", "气温", "weather"},
 			"send_email":  {"邮件", "发送", "email"},
@@ -626,16 +633,16 @@ func TestKeywordRouter(t *testing.T) {
 		TopN: 3,
 	}
 
-	tools := []Tool{
-		FunctionTool{Name: "get_weather"},
-		FunctionTool{Name: "send_email"},
-		FunctionTool{Name: "search_db"},
-		FunctionTool{Name: "other_tool1"},
-		FunctionTool{Name: "other_tool2"},
+	tools := []tool.Tool{
+		tool.FunctionTool{Name: "get_weather"},
+		tool.FunctionTool{Name: "send_email"},
+		tool.FunctionTool{Name: "search_db"},
+		tool.FunctionTool{Name: "other_tool1"},
+		tool.FunctionTool{Name: "other_tool2"},
 	}
 
 	t.Run("MatchWeatherKeyword", func(t *testing.T) {
-		input := InputString("查询北京天气")
+		input := types.InputString("查询北京天气")
 		routed, err := router.RouteTools(context.Background(), input, tools)
 
 		if err != nil {
@@ -654,7 +661,7 @@ func TestKeywordRouter(t *testing.T) {
 	})
 
 	t.Run("MatchEmailKeyword", func(t *testing.T) {
-		input := InputString("发送一封邮件")
+		input := types.InputString("发送一封邮件")
 		routed, err := router.RouteTools(context.Background(), input, tools)
 
 		if err != nil {
@@ -669,7 +676,7 @@ func TestKeywordRouter(t *testing.T) {
 }
 
 func TestMemoryStateProvider(t *testing.T) {
-	provider := NewMemoryStateProvider()
+	provider := agent.NewMemoryStateProvider()
 
 	t.Run("SetAndGetState", func(t *testing.T) {
 		provider.SetState("name", "张三")
@@ -691,11 +698,11 @@ func TestMemoryStateProvider(t *testing.T) {
 
 func TestDynamicInstruction(t *testing.T) {
 	t.Run("WithTemplate", func(t *testing.T) {
-		provider := NewMemoryStateProvider()
+		provider := agent.NewMemoryStateProvider()
 		provider.SetState("user_name", "张三")
 		provider.SetState("task_count", "5")
 
-		instruction := &DynamicInstruction{
+		instruction := &agent.DynamicInstruction{
 			StateProvider: provider,
 			Template:      "你好 {{user_name}}，你有 {{task_count}} 个任务。",
 		}
@@ -712,10 +719,10 @@ func TestDynamicInstruction(t *testing.T) {
 	})
 
 	t.Run("WithBasePrompt", func(t *testing.T) {
-		provider := NewMemoryStateProvider()
+		provider := agent.NewMemoryStateProvider()
 		provider.SetState("status", "在线")
 
-		instruction := &DynamicInstruction{
+		instruction := &agent.DynamicInstruction{
 			BasePrompt:    "你是一个助手。",
 			StateProvider: provider,
 		}
@@ -737,7 +744,7 @@ func TestDynamicInstruction(t *testing.T) {
 // TestReActStateProvider 测试 ReAct 状态提供者
 func TestReActStateProvider(t *testing.T) {
 	t.Run("InitialState", func(t *testing.T) {
-		provider := NewReActStateProvider()
+		provider := pattern.NewReActStateProvider()
 
 		state, err := provider.GetState(context.Background())
 		if err != nil {
@@ -761,7 +768,7 @@ func TestReActStateProvider(t *testing.T) {
 	})
 
 	t.Run("AddObservation", func(t *testing.T) {
-		provider := NewReActStateProvider()
+		provider := pattern.NewReActStateProvider()
 
 		// 添加两个观察结果
 		provider.AddObservation("天气查询结果: 晴天 25°C")
@@ -792,7 +799,7 @@ func TestReActStateProvider(t *testing.T) {
 	})
 
 	t.Run("Reset", func(t *testing.T) {
-		provider := NewReActStateProvider()
+		provider := pattern.NewReActStateProvider()
 
 		// 先添加一些观察
 		provider.AddObservation("观察1")
@@ -822,7 +829,7 @@ func TestReActStateProvider(t *testing.T) {
 // TestNewReActInstruction 测试 ReAct Instruction 工厂函数
 func TestNewReActInstruction(t *testing.T) {
 	t.Run("ContainsDefaultTemplate", func(t *testing.T) {
-		instruction := NewReActInstruction("")
+		instruction := pattern.NewReActInstruction("")
 
 		result, err := instruction.GetInstructions(context.Background(), nil)
 		if err != nil {
@@ -846,7 +853,7 @@ func TestNewReActInstruction(t *testing.T) {
 
 	t.Run("ContainsCustomRules", func(t *testing.T) {
 		customRules := "\n\n## 额外规则\n- 必须使用中文回答\n- 每步思考不超过50字"
-		instruction := NewReActInstruction(customRules)
+		instruction := pattern.NewReActInstruction(customRules)
 
 		result, err := instruction.GetInstructions(context.Background(), nil)
 		if err != nil {
@@ -865,10 +872,10 @@ func TestNewReActInstruction(t *testing.T) {
 
 // TestReActWithDynamicInstruction 测试 ReAct 与 DynamicInstruction 结合使用
 func TestReActWithDynamicInstruction(t *testing.T) {
-	provider := NewReActStateProvider()
+	provider := pattern.NewReActStateProvider()
 
-	instruction := &DynamicInstruction{
-		BasePrompt:    string(DefaultReActInstruction),
+	instruction := &agent.DynamicInstruction{
+		BasePrompt:    string(pattern.DefaultReActInstruction),
 		StateProvider: provider,
 		Template: `
 你使用 ReAct 模式解决问题。
@@ -878,7 +885,7 @@ func TestReActWithDynamicInstruction(t *testing.T) {
 - 已观察: {{observations}}
 - 观察次数: {{observation_count}}
 
-` + string(DefaultReActInstruction),
+` + string(pattern.DefaultReActInstruction),
 	}
 
 	// 初始状态

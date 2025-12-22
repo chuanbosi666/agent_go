@@ -1,4 +1,4 @@
-package nvgo
+package tool
 
 import (
 	"context"
@@ -8,31 +8,33 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/agent_go/internal/strictschema"
+	"nvgo/internal/strictschema"
+	"nvgo/pkg/types"
+
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/openai/openai-go/v3/packages/param"
 )
 
-// MCPToolFilterContext provides context for tool filter functions.
+// MCPToolFilterContext provides context for filtering MCP tools.
 type MCPToolFilterContext struct {
-	Agent      *Agent
+	Agent      types.AgentLike
 	ServerName string
 }
 
-// MCPToolFilter determines if tools should be included or filtered out.
+// MCPToolFilter determines which MCP tools to include.
 type MCPToolFilter interface {
 	FilterMCPTool(ctx context.Context, filterCtx MCPToolFilterContext, tool *mcp.Tool) (bool, error)
 }
 
 var _ MCPToolFilter = (*MCPToolFilterStatic)(nil)
 
-// MCPToolFilterStatic uses allowlists and blocklists for static filtering.
+// MCPToolFilterStatic filters tools by allow/block lists.
 type MCPToolFilterStatic struct {
 	AllowedToolNames []string
 	BlockedToolNames []string
 }
 
-// NewMCPToolFilterStatic creates a static filter if configured, else nil.
+// NewMCPToolFilterStatic creates a static filter. Returns nil if no filter configured.
 func NewMCPToolFilterStatic(allowed, blocked []string) (MCPToolFilter, bool) {
 	if len(allowed) == 0 && len(blocked) == 0 {
 		return nil, false
@@ -66,12 +68,12 @@ func ApplyMCPToolFilter(ctx context.Context, filterCtx MCPToolFilterContext, fil
 	return filtered
 }
 
-// GetAllFunctionTools retrieves function tools from multiple MCP servers.
-func GetAllFunctionTools(ctx context.Context, servers []MCPServer, strict bool, agent *Agent) ([]Tool, error) {
+// GetAllFunctionTools retrieves tools from multiple MCP servers.
+func GetAllFunctionTools(ctx context.Context, servers []MCPServer, strict bool, a types.AgentLike) ([]Tool, error) {
 	var tools []Tool
 	names := make(map[string]struct{})
 	for _, s := range servers {
-		stools, err := GetFunctionTools(ctx, s, strict, agent)
+		stools, err := GetFunctionTools(ctx, s, strict, a)
 		if err != nil {
 			return nil, err
 		}
@@ -87,9 +89,9 @@ func GetAllFunctionTools(ctx context.Context, servers []MCPServer, strict bool, 
 	return tools, nil
 }
 
-// GetFunctionTools retrieves function tools from a single MCP server.
-func GetFunctionTools(ctx context.Context, server MCPServer, strict bool, agent *Agent) ([]Tool, error) {
-	mtools, err := server.ListTools(ctx, agent)
+// GetFunctionTools retrieves tools from a single MCP server.
+func GetFunctionTools(ctx context.Context, server MCPServer, strict bool, a types.AgentLike) ([]Tool, error) {
+	mtools, err := server.ListTools(ctx, a)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +106,7 @@ func GetFunctionTools(ctx context.Context, server MCPServer, strict bool, agent 
 	return ftools, nil
 }
 
-// ToFunctionTool converts MCP tool to function tool.
+// ToFunctionTool converts MCP tool to FunctionTool.
 func ToFunctionTool(tool *mcp.Tool, server MCPServer, strict bool) (FunctionTool, error) {
 	invoke := func(ctx context.Context, args string) (any, error) {
 		return InvokeMCPTool(ctx, server, tool, args)
@@ -140,7 +142,7 @@ func ToFunctionTool(tool *mcp.Tool, server MCPServer, strict bool) (FunctionTool
 	}, nil
 }
 
-// InvokeMCPTool invokes tool and returns JSON result.
+// InvokeMCPTool invokes an MCP tool and returns JSON result.
 func InvokeMCPTool(ctx context.Context, server MCPServer, tool *mcp.Tool, input string) (string, error) {
 	var data map[string]any
 	if input != "" {
@@ -175,20 +177,27 @@ func InvokeMCPTool(ctx context.Context, server MCPServer, tool *mcp.Tool, input 
 }
 
 // MCPServer defines MCP server operations.
+// MCPServer defines the interface for Model Context Protocol servers.
 type MCPServer interface {
 	Connect(context.Context) error
 	Cleanup(context.Context) error
 	Name() string
 	UseStructuredContent() bool
-	ListTools(context.Context, *Agent) ([]*mcp.Tool, error)
+	ListTools(context.Context, types.AgentLike) ([]*mcp.Tool, error)
 	CallTool(context.Context, string, map[string]any) (*mcp.CallToolResult, error)
 	ListPrompts(context.Context) (*mcp.ListPromptsResult, error)
 	GetPrompt(context.Context, string, map[string]string) (*mcp.GetPromptResult, error)
 }
 
+// MCP error definitions.
+var (
+	ErrMCPServerNotInitialized = errors.New("MCP server not initialized")
+	ErrMCPAgentRequired        = errors.New("agent required for tool filtering")
+)
+
 var _ MCPServer = (*MCPServerWithClientSession)(nil)
 
-// MCPServerWithClientSession base for MCP servers using ClientSession.
+// MCPServerWithClientSession implements MCPServer using MCP ClientSession.
 type MCPServerWithClientSession struct {
 	transport            mcp.Transport
 	session              *mcp.ClientSession
@@ -209,12 +218,12 @@ type MCPServerWithClientSessionParams struct {
 	UseStructuredContent bool
 }
 
-// NewMCPServerWithClientSession creates session-based server.
+// NewMCPServerWithClientSession creates a session-based MCP server.
 func NewMCPServerWithClientSession(p MCPServerWithClientSessionParams) *MCPServerWithClientSession {
 	return &MCPServerWithClientSession{
 		transport:            p.Transport,
 		cacheToolsList:       p.CacheToolsList,
-		cacheDirty:           true, // Initial dirty for first fetch
+		cacheDirty:           true,
 		toolFilter:           p.ToolFilter,
 		name:                 p.Name,
 		useStructuredContent: p.UseStructuredContent,
@@ -242,11 +251,10 @@ func (s *MCPServerWithClientSession) Cleanup(ctx context.Context) error {
 	return err
 }
 
-func (s *MCPServerWithClientSession) Name() string { return s.name }
-
+func (s *MCPServerWithClientSession) Name() string               { return s.name }
 func (s *MCPServerWithClientSession) UseStructuredContent() bool { return s.useStructuredContent }
 
-func (s *MCPServerWithClientSession) ListTools(ctx context.Context, agent *Agent) ([]*mcp.Tool, error) {
+func (s *MCPServerWithClientSession) ListTools(ctx context.Context, a types.AgentLike) ([]*mcp.Tool, error) {
 	if s.session == nil {
 		return nil, ErrMCPServerNotInitialized
 	}
@@ -265,10 +273,10 @@ func (s *MCPServerWithClientSession) ListTools(ctx context.Context, agent *Agent
 	if s.toolFilter == nil {
 		return tools, nil
 	}
-	if agent == nil {
+	if a == nil {
 		return nil, ErrMCPAgentRequired
 	}
-	filterCtx := MCPToolFilterContext{Agent: agent, ServerName: s.name}
+	filterCtx := MCPToolFilterContext{Agent: a, ServerName: s.name}
 	return ApplyMCPToolFilter(ctx, filterCtx, s.toolFilter, tools), nil
 }
 
@@ -293,6 +301,7 @@ func (s *MCPServerWithClientSession) GetPrompt(ctx context.Context, name string,
 	return s.session.GetPrompt(ctx, &mcp.GetPromptParams{Name: name, Arguments: args})
 }
 
+// Run connects, executes fn, then cleans up.
 func (s *MCPServerWithClientSession) Run(ctx context.Context, fn func(context.Context, *MCPServerWithClientSession) error) (err error) {
 	if err := s.Connect(ctx); err != nil {
 		return fmt.Errorf("connect: %w", err)
@@ -305,10 +314,10 @@ func (s *MCPServerWithClientSession) Run(ctx context.Context, fn func(context.Co
 	return fn(ctx, s)
 }
 
-// InvalidateToolsCache marks cache as dirty.
+// InvalidateToolsCache marks cache as dirty for next fetch.
 func (s *MCPServerWithClientSession) InvalidateToolsCache() { s.cacheDirty = true }
 
-// CommonMCPServerParams shared params for MCP servers.
+// CommonMCPServerParams shared params for MCP server types.
 type CommonMCPServerParams struct {
 	CacheToolsList       bool
 	Name                 string
@@ -316,6 +325,7 @@ type CommonMCPServerParams struct {
 	UseStructuredContent bool
 }
 
+// MCPServerStdio is Stdio-based MCP server.
 type MCPServerStdioParams struct {
 	Transport *mcp.CommandTransport
 	CommonMCPServerParams
@@ -323,10 +333,9 @@ type MCPServerStdioParams struct {
 
 type MCPServerStdio struct{ *MCPServerWithClientSession }
 
-// NewMCPServerStdio creates Stdio-based server.
 func NewMCPServerStdio(p MCPServerStdioParams) *MCPServerStdio {
 	if p.Transport == nil {
-		panic("transport required") // Or return error
+		panic("transport required")
 	}
 	name := p.Name
 	if name == "" {
@@ -343,33 +352,7 @@ func NewMCPServerStdio(p MCPServerStdioParams) *MCPServerStdio {
 	}
 }
 
-type MCPServerSSEParams struct {
-	Transport *mcp.SSEClientTransport
-	CommonMCPServerParams
-}
-
-type MCPServerSSE struct{ *MCPServerWithClientSession }
-
-// NewMCPServerSSE creates SSE-based server (deprecated).
-func NewMCPServerSSE(p MCPServerSSEParams) *MCPServerSSE {
-	if p.Transport == nil {
-		panic("transport required")
-	}
-	name := p.Name
-	if name == "" {
-		name = fmt.Sprintf("sse: %s", p.Transport.Endpoint)
-	}
-	return &MCPServerSSE{
-		MCPServerWithClientSession: NewMCPServerWithClientSession(MCPServerWithClientSessionParams{
-			Name:                 name,
-			Transport:            p.Transport,
-			CacheToolsList:       p.CacheToolsList,
-			ToolFilter:           p.ToolFilter,
-			UseStructuredContent: p.UseStructuredContent,
-		}),
-	}
-}
-
+// MCPServerStreamableHTTP is HTTP-based MCP server.
 type MCPServerStreamableHTTPParams struct {
 	Transport *mcp.StreamableClientTransport
 	CommonMCPServerParams
@@ -377,7 +360,6 @@ type MCPServerStreamableHTTPParams struct {
 
 type MCPServerStreamableHTTP struct{ *MCPServerWithClientSession }
 
-// NewMCPServerStreamableHTTP creates Streamable HTTP server.
 func NewMCPServerStreamableHTTP(p MCPServerStreamableHTTPParams) *MCPServerStreamableHTTP {
 	if p.Transport == nil {
 		panic("transport required")
