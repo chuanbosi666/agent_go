@@ -1,17 +1,15 @@
 package agent
 
 import (
-	"nvgo/pkg/tool"
+	"github.com/chuanbosi666/agent_go/pkg/tool"
 
 	"github.com/openai/openai-go/v3"
 )
-
 
 // PromptConfig holds prompt generation settings.
 type PromptConfig struct {
 	StateProvider StateProvider
 }
-
 
 // MCPConfig provides configuration for MCP servers.
 type MCPConfig struct {

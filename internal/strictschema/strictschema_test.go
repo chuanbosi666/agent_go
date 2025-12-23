@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"nvgo/internal/strictschema"
+	"github.com/chuanbosi666/agent_go/internal/strictschema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

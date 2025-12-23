@@ -31,7 +31,7 @@ import (
 	"log"
 	"os"
 
-	nvgo "nvgo"
+	agentgo "github.com/chuanbosi666/agent_go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 )
@@ -91,7 +91,7 @@ func main() {
 	// 测试问题
 	question := "用一句话介绍你自己的特点。"
 
-	fmt.Println("=== 多模型测试：同一个问题，不同模型的回答 ===\n")
+	fmt.Println("=== 多模型测试：同一个问题，不同模型的回答 ===")
 
 	// 要测试的模型（你可以根据需要修改这个列表）
 	testModels := []string{
@@ -110,13 +110,13 @@ func main() {
 		fmt.Printf("模型: %s\n", modelName)
 
 		// 创建 Agent（只需要改模型名，其他都一样！）
-		agent := nvgo.New(modelKey).
+		agent := agentgo.New(modelKey).
 			WithInstructions("你是一个有特色的 AI 助手。").
 			WithModel(modelName).  // 只有这一行不同
 			WithClient(client)
 
 		// 运行（完全相同的代码）
-		result, err := nvgo.Run(ctx, agent, question)
+		result, err := agentgo.Run(ctx, agent, question)
 		if err != nil {
 			fmt.Printf("❌ 错误: %v\n\n", err)
 			continue
@@ -149,17 +149,17 @@ func ExampleSwitchModel() {
 	)
 
 	// 今天用 Claude
-	agentClaude := nvgo.New("助手").
+	agentClaude := agentgo.New("助手").
 		WithModel("anthropic/claude-3.5-sonnet").
 		WithClient(client)
 
 	// 明天换 Gemini，只改一行！
-	agentGemini := nvgo.New("助手").
+	agentGemini := agentgo.New("助手").
 		WithModel("google/gemini-flash-1.5").
 		WithClient(client)
 
 	// 后天试试 DeepSeek
-	agentDeepSeek := nvgo.New("助手").
+	agentDeepSeek := agentgo.New("助手").
 		WithModel("deepseek/deepseek-chat").
 		WithClient(client)
 
@@ -174,17 +174,17 @@ func ExampleSelectByTask() {
 	)
 
 	// 复杂推理任务 → Claude Sonnet
-	reasoningAgent := nvgo.New("推理专家").
+	reasoningAgent := agentgo.New("推理专家").
 		WithModel("anthropic/claude-3.5-sonnet").
 		WithClient(client)
 
 	// 快速对话 → Gemini Flash
-	chatAgent := nvgo.New("聊天助手").
+	chatAgent := agentgo.New("聊天助手").
 		WithModel("google/gemini-flash-1.5").
 		WithClient(client)
 
 	// 代码生成 → DeepSeek Coder
-	codeAgent := nvgo.New("编程助手").
+	codeAgent := agentgo.New("编程助手").
 		WithModel("deepseek/deepseek-coder").
 		WithClient(client)
 
@@ -192,14 +192,14 @@ func ExampleSelectByTask() {
 }
 
 // 示例 3：动态选择模型
-func ExampleDynamicModel(modelName string) *nvgo.Agent {
+func ExampleDynamicModel(modelName string) *agentgo.Agent {
 	client := openai.NewClient(
 		option.WithAPIKey("sk-or-v1-your-key"),
 		option.WithBaseURL("https://openrouter.ai/api/v1"),
 	)
 
 	// 从配置文件或用户输入读取模型名
-	return nvgo.New("动态助手").
+	return agentgo.New("动态助手").
 		WithModel(modelName). // 运行时决定
 		WithClient(client)
 }

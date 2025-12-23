@@ -1,6 +1,6 @@
 # 多模型支持指南
 
-nvgo 通过 OpenRouter 统一接口，支持 **100+ 种 AI 模型**，包括所有主流厂商。
+github.com/chuanbosi666/agent_go 通过 OpenRouter 统一接口，支持 **100+ 种 AI 模型**，包括所有主流厂商。
 
 ## 🚀 快速开始
 
@@ -23,14 +23,14 @@ OPENAI_BASE_URL=https://openrouter.ai/api/v1
 
 ```go
 import (
-    nvgo "nvgo"
+    github.com/chuanbosi666/agent_go "github.com/chuanbosi666/agent_go"
     "github.com/openai/openai-go/v3"
 )
 
 client := openai.NewClient()  // 自动读取环境变量
 
 // 只需要改模型名，其他完全一样！
-agent := nvgo.New("助手").
+agent := github.com/chuanbosi666/agent_go.New("助手").
     WithModel("anthropic/claude-3.5-sonnet").  // 改这一行切换模型
     WithClient(client)
 ```
@@ -156,7 +156,7 @@ import (
     "context"
     "log"
 
-    nvgo "nvgo"
+    github.com/chuanbosi666/agent_go "github.com/chuanbosi666/agent_go"
     "github.com/openai/openai-go/v3"
 )
 
@@ -164,12 +164,12 @@ func main() {
     client := openai.NewClient()  // 从环境变量读取配置
 
     // 示例：使用 DeepSeek（性价比最高）
-    agent := nvgo.New("助手").
+    agent := github.com/chuanbosi666/agent_go.New("助手").
         WithInstructions("你是一个编程助手").
         WithModel("deepseek/deepseek-chat").
         WithClient(client)
 
-    result, err := nvgo.Run(context.Background(), agent, "写一个快速排序")
+    result, err := github.com/chuanbosi666/agent_go.Run(context.Background(), agent, "写一个快速排序")
     if err != nil {
         log.Fatal(err)
     }
@@ -188,9 +188,9 @@ modelConfig := map[string]string{
     "fast":     "google/gemini-flash-1.5",     // 快速响应用 Flash
 }
 
-func createAgent(taskType string) *nvgo.Agent {
+func createAgent(taskType string) *github.com/chuanbosi666/agent_go.Agent {
     model := modelConfig[taskType]
-    return nvgo.New("助手").
+    return github.com/chuanbosi666/agent_go.New("助手").
         WithModel(model).
         WithClient(client)
 }
@@ -243,7 +243,7 @@ openaiClient := openai.NewClient(
 ```
 
 ### Q: 支持流式输出吗？
-A: 支持！但 nvgo 当前版本未实现，需要后续添加。
+A: 支持！但 github.com/chuanbosi666/agent_go 当前版本未实现，需要后续添加。
 
 ### Q: 有免费额度吗？
 A: OpenRouter 本身无免费额度，但部分模型免费：

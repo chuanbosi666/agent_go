@@ -20,7 +20,7 @@ import (
 	"log"
 	"os"
 
-	nvgo "nvgo"
+	agentgo "github.com/chuanbosi666/agent_go"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 )
@@ -49,14 +49,14 @@ func main() {
 	)
 
 	// 创建 Agent
-	agent := nvgo.New("助手").
+	agent := agentgo.New("助手").
 		WithInstructions("你是一个友好的 AI 助手，请用简洁的中文回答问题。").
 		WithModel("gpt-4o-mini"). // 使用你的模型名称
 		WithClient(client)
 
 	// 运行
 	ctx := context.Background()
-	result, err := nvgo.Run(ctx, agent, "你好！请介绍一下你自己。")
+	result, err := agentgo.Run(ctx, agent, "你好！请介绍一下你自己。")
 	if err != nil {
 		log.Fatalf("运行失败: %v", err)
 	}

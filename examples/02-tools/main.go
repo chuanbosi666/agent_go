@@ -1,4 +1,4 @@
-// Package main 演示如何在 nvgo 中使用工具（Tools）
+// Package main 演示如何在 agentgo 中使用工具（Tools）
 //
 // 本示例展示如何定义 FunctionTool 并让 Agent 调用它们。
 // 工具让 Agent 能够执行具体操作，如计算、查询数据等。
@@ -21,13 +21,13 @@ import (
 	"os"
 	"time"
 
-	nvgo "nvgo"
+	agentgo "github.com/chuanbosi666/agent_go"
 	"github.com/openai/openai-go/v3"
 )
 
 // 定义工具 1: 获取当前时间
-func createGetTimeTool() nvgo.FunctionTool {
-	return nvgo.FunctionTool{
+func createGetTimeTool() agentgo.FunctionTool {
+	return agentgo.FunctionTool{
 		Name:        "get_current_time",
 		Description: "获取当前的日期和时间",
 		ParamsJSONSchema: map[string]any{
@@ -42,8 +42,8 @@ func createGetTimeTool() nvgo.FunctionTool {
 }
 
 // 定义工具 2: 计算器
-func createCalculatorTool() nvgo.FunctionTool {
-	return nvgo.FunctionTool{
+func createCalculatorTool() agentgo.FunctionTool {
+	return agentgo.FunctionTool{
 		Name:        "calculator",
 		Description: "执行数学计算。支持加减乘除和幂运算。",
 		ParamsJSONSchema: map[string]any{
@@ -100,8 +100,8 @@ func createCalculatorTool() nvgo.FunctionTool {
 }
 
 // 定义工具 3: 天气查询（模拟）
-func createWeatherTool() nvgo.FunctionTool {
-	return nvgo.FunctionTool{
+func createWeatherTool() agentgo.FunctionTool {
+	return agentgo.FunctionTool{
 		Name:        "get_weather",
 		Description: "查询指定城市的天气信息",
 		ParamsJSONSchema: map[string]any{
@@ -149,7 +149,7 @@ func main() {
 	client := openai.NewClient()
 
 	// 创建带工具的 Agent
-	agent := nvgo.New("工具助手").
+	agent := agentgo.New("工具助手").
 		WithInstructions(`你是一个智能助手，可以使用以下工具帮助用户:
 1. get_current_time: 获取当前时间
 2. calculator: 进行数学计算
@@ -158,15 +158,15 @@ func main() {
 请根据用户需求选择合适的工具。`).
 		WithModel("gpt-4o-mini").
 		WithClient(client).
-		WithTools([]nvgo.FunctionTool{
+		WithTools([]agentgo.FunctionTool{
 			createGetTimeTool(),
 			createCalculatorTool(),
 			createWeatherTool(),
 		})
 
 	// 配置 Runner
-	runner := nvgo.Runner{
-		Config: nvgo.RunConfig{
+	runner := agentgo.Runner{
+		Config: agentgo.RunConfig{
 			MaxTurns: 5, // 最多执行 5 轮
 		},
 	}

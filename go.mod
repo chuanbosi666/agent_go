@@ -1,4 +1,4 @@
-module nvgo
+module github.com/chuanbosi666/agent_go
 
 go 1.25
 

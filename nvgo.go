@@ -1,6 +1,6 @@
-// Package nvgo 是一个 Go 语言的 AI Agent 框架，参考 OpenAI Agents SDK 设计。
+// Package github.com/chuanbosi666/agent_go 是一个 Go 语言的 AI Agent 框架，参考 OpenAI Agents SDK 设计。
 //
-// nvgo 提供了构建智能 Agent 应用所需的全部功能，包括：
+// github.com/chuanbosi666/agent_go 提供了构建智能 Agent 应用所需的全部功能，包括：
 //   - Agent 定义与配置
 //   - 工具调用（FunctionTool 和 MCP）
 //   - 输入/输出护栏
@@ -12,24 +12,24 @@
 // 快速开始：
 //
 //	client := openai.NewClient()
-//	agent := nvgo.New("助手").
+//	agent := github.com/chuanbosi666/agent_go.New("助手").
 //		WithInstructions("你是一个友好的 AI 助手").
 //		WithModel("gpt-4o-mini").
 //		WithClient(client)
 //
-//	result, err := nvgo.Run(ctx, agent, "你好！")
+//	result, err := github.com/chuanbosi666/agent_go.Run(ctx, agent, "你好！")
 //
 // 更多示例请查看 examples 目录。
-package nvgo
+package agentgo
 
 import (
-	"nvgo/pkg/agent"
-	"nvgo/pkg/memory"
-	"nvgo/pkg/pattern"
-	"nvgo/pkg/runner"
-	"nvgo/pkg/tool"
-	"nvgo/pkg/types"
-	"nvgo/pkg/config"
+	"github.com/chuanbosi666/agent_go/pkg/agent"
+	"github.com/chuanbosi666/agent_go/pkg/config"
+	"github.com/chuanbosi666/agent_go/pkg/memory"
+	"github.com/chuanbosi666/agent_go/pkg/pattern"
+	"github.com/chuanbosi666/agent_go/pkg/runner"
+	"github.com/chuanbosi666/agent_go/pkg/tool"
+	"github.com/chuanbosi666/agent_go/pkg/types"
 )
 
 // ========== Agent ==========
@@ -269,27 +269,27 @@ type InputItems = types.InputItems
 // CopyInput 复制 Input 实例。
 var CopyInput = types.CopyInput
 
-  // ========== Config ==========
+// ========== Config ==========
 
-  // ModelConfig 存储单个模型的完整配置信息
-  type ModelConfig = config.ModelConfig
+// ModelConfig 存储单个模型的完整配置信息
+type ModelConfig = config.ModelConfig
 
-  // ModelRegistry 管理多个模型配置
-  type ModelRegistry = config.ModelRegistry
+// ModelRegistry 管理多个模型配置
+type ModelRegistry = config.ModelRegistry
 
-  // NewModelRegistry 创建新的模型注册表
-  func NewModelRegistry() *ModelRegistry {
-        return config.NewModelRegistry()
-  }
+// NewModelRegistry 创建新的模型注册表
+func NewModelRegistry() *ModelRegistry {
+	return config.NewModelRegistry()
+}
 
-  // LoadFromFile 从 JSON 文件加载多个模型配置
-  var LoadFromFile = config.LoadFromFile
+// LoadFromFile 从 JSON 文件加载多个模型配置
+var LoadFromFile = config.LoadFromFile
 
-  // SaveToFile 将注册表中的所有配置保存到 JSON 文件
-  var SaveToFile = config.SaveToFile
+// SaveToFile 将注册表中的所有配置保存到 JSON 文件
+var SaveToFile = config.SaveToFile
 
-  // LoadOrCreate 尝试从文件加载配置，如果文件不存在则创建新注册表
-  var LoadOrCreate = config.LoadOrCreate
+// LoadOrCreate 尝试从文件加载配置，如果文件不存在则创建新注册表
+var LoadOrCreate = config.LoadOrCreate
 
 // ========== Memory/Session ==========
 
@@ -305,3 +305,13 @@ type SQLiteSession = memory.SQLiteSession
 // NewSQLiteSession 创建新的 SQLite 会话。
 var NewSQLiteSession = memory.NewSQLiteSession
 
+var (
+	DefaultConfig = config.DefaultConfig
+	LoadWithEnv   = config.LoadWithEnv
+)
+
+const (
+	EnvAPIKey  = config.EnvAPIKey
+	EnvBaseURL = config.EnvBaseURL
+	EnvModel   = config.EnvModel
+)

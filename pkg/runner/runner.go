@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"nvgo/pkg/agent"
-	"nvgo/pkg/memory"
-	"nvgo/pkg/tool"
-	"nvgo/pkg/types"
+	"github.com/chuanbosi666/agent_go/pkg/agent"
+	"github.com/chuanbosi666/agent_go/pkg/memory"
+	"github.com/chuanbosi666/agent_go/pkg/tool"
+	"github.com/chuanbosi666/agent_go/pkg/types"
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/packages/param"
@@ -33,12 +33,13 @@ func WrapRunItem(item responses.ResponseInputItemUnionParam) RunItem {
 	return RunItemWrapper{item: item}
 }
 
-  // Output represents the final output from an Agent run.
+// Output represents the final output from an Agent run.
 type Output struct {
-	Items       []responses.ResponseOutputItemUnion
-	InputTokens int64
+	Items        []responses.ResponseOutputItemUnion
+	InputTokens  int64
 	OutputTokens int64
 }
+
 // Usage tracks token consumption across LLM requests.
 type Usage struct {
 	Requests            uint64
@@ -93,9 +94,8 @@ type RunConfig struct {
 }
 
 func (o Output) TotalTokens() int64 {
-        return o.InputTokens + o.OutputTokens
-  }
-
+	return o.InputTokens + o.OutputTokens
+}
 
 // Run executes the agent with a string input using DefaultRunner.
 func Run(ctx context.Context, startingAgent *agent.Agent, input string) (*RunResult, error) {
@@ -194,7 +194,7 @@ func (r Runner) run(ctx context.Context, startingAgent *agent.Agent, input types
 			threshold = 5
 		}
 		if r.Config.ToolRouter != nil && len(tools) > threshold {
-			routedTools, routeErr := r.Config.ToolRouter.RouteTools(ctx,input, tools)
+			routedTools, routeErr := r.Config.ToolRouter.RouteTools(ctx, input, tools)
 			if routeErr == nil {
 				tools = routedTools
 			}

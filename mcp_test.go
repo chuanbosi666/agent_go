@@ -1,50 +1,50 @@
-package nvgo_test
+package agentgo
 
 import (
 	"context"
-	"testing"
 	"errors"
+	"testing"
 
-	"nvgo/pkg/types"
-	"nvgo/pkg/tool"
+	"github.com/chuanbosi666/agent_go/pkg/tool"
+	"github.com/chuanbosi666/agent_go/pkg/types"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/google/jsonschema-go/jsonschema"
 )
 
-type MockMCPServer struct{
-	name					string
-	useStructuredContent 	bool
-	tools					[]*mcp.Tool
-	callToolFunc			func(ctx context.Context, name string, args map[string]any)(*mcp.CallToolResult,error)
-	prompts					[]*mcp.Prompt
+type MockMCPServer struct {
+	name                 string
+	useStructuredContent bool
+	tools                []*mcp.Tool
+	callToolFunc         func(ctx context.Context, name string, args map[string]any) (*mcp.CallToolResult, error)
+	prompts              []*mcp.Prompt
 }
 
-func (m *MockMCPServer) Connect(ctx context.Context) error{
+func (m *MockMCPServer) Connect(ctx context.Context) error {
 	return nil
 }
-func (m *MockMCPServer) Cleanup(ctx context.Context) error{
+func (m *MockMCPServer) Cleanup(ctx context.Context) error {
 	return nil
 }
 
-func(m *MockMCPServer) Name() string{
-	if m.name == ""{
+func (m *MockMCPServer) Name() string {
+	if m.name == "" {
 		return "mock-server"
 	}
 	return m.name
 }
 
 func (m *MockMCPServer) UseStructuredContent() bool {
-        return m.useStructuredContent
+	return m.useStructuredContent
 }
 
 func (m *MockMCPServer) ListTools(ctx context.Context, a types.AgentLike) ([]*mcp.Tool, error) {
-        return m.tools, nil
+	return m.tools, nil
 }
 
-func (m *MockMCPServer) CallTool(ctx context.Context, name string, args map[string]any) (*mcp.CallToolResult, error){
-	if m.callToolFunc != nil{
+func (m *MockMCPServer) CallTool(ctx context.Context, name string, args map[string]any) (*mcp.CallToolResult, error) {
+	if m.callToolFunc != nil {
 		return m.callToolFunc(ctx, name, args)
 	}
 	return &mcp.CallToolResult{
@@ -55,11 +55,11 @@ func (m *MockMCPServer) CallTool(ctx context.Context, name string, args map[stri
 }
 
 func (m *MockMCPServer) ListPrompts(ctx context.Context) (*mcp.ListPromptsResult, error) {
-        return &mcp.ListPromptsResult{Prompts: m.prompts}, nil
+	return &mcp.ListPromptsResult{Prompts: m.prompts}, nil
 }
 
-func (m *MockMCPServer) GetPrompt(ctx context.Context, name string, args map[string]string)(*mcp.GetPromptResult, error) {
-        return &mcp.GetPromptResult{}, nil
+func (m *MockMCPServer) GetPrompt(ctx context.Context, name string, args map[string]string) (*mcp.GetPromptResult, error) {
+	return &mcp.GetPromptResult{}, nil
 }
 func TestNewMCPToolFilterStatic(t *testing.T) {
 	tests := []struct {
@@ -218,164 +218,164 @@ func TestApplyMCPToolFilter(t *testing.T) {
 }
 
 func TestToFunctionTool(t *testing.T) {
-      tests := []struct {
-          name     string
-          mcpTool  *mcp.Tool
-          strict   bool
-          wantName string
-          wantDesc string
-      }{
-          {
-              name: "basic tool with schema",
-              mcpTool: &mcp.Tool{
-                  Name:        "get_weather",
-                  Description: "Get weather information",
-                  InputSchema: &jsonschema.Schema{
-                      Type: "object",
-                      Properties: map[string]*jsonschema.Schema{
-                          "city": {
-                              Type:        "string",
-                              Description: "City name",
-                          },
-                      },
-                      Required: []string{"city"},
-                  },
-              },
-              strict:   false,
-              wantName: "get_weather",
-              wantDesc: "Get weather information",
-          },
-          {
-              name: "tool without schema",
-              mcpTool: &mcp.Tool{
-                  Name:        "no_params",
-                  Description: "Tool with no parameters",
-              },
-              strict:   false,
-              wantName: "no_params",
-              wantDesc: "Tool with no parameters",
-          },
-          {
-              name: "strict mode",
-              mcpTool: &mcp.Tool{
-                  Name: "strict_tool",
-                  InputSchema: &jsonschema.Schema{
-                      Type: "object",
-                      Properties: map[string]*jsonschema.Schema{
-                          "value": {Type: "string"},
-                      },
-                  },
-              },
-              strict:   true,
-              wantName: "strict_tool",
-          },
-      }
+	tests := []struct {
+		name     string
+		mcpTool  *mcp.Tool
+		strict   bool
+		wantName string
+		wantDesc string
+	}{
+		{
+			name: "basic tool with schema",
+			mcpTool: &mcp.Tool{
+				Name:        "get_weather",
+				Description: "Get weather information",
+				InputSchema: &jsonschema.Schema{
+					Type: "object",
+					Properties: map[string]*jsonschema.Schema{
+						"city": {
+							Type:        "string",
+							Description: "City name",
+						},
+					},
+					Required: []string{"city"},
+				},
+			},
+			strict:   false,
+			wantName: "get_weather",
+			wantDesc: "Get weather information",
+		},
+		{
+			name: "tool without schema",
+			mcpTool: &mcp.Tool{
+				Name:        "no_params",
+				Description: "Tool with no parameters",
+			},
+			strict:   false,
+			wantName: "no_params",
+			wantDesc: "Tool with no parameters",
+		},
+		{
+			name: "strict mode",
+			mcpTool: &mcp.Tool{
+				Name: "strict_tool",
+				InputSchema: &jsonschema.Schema{
+					Type: "object",
+					Properties: map[string]*jsonschema.Schema{
+						"value": {Type: "string"},
+					},
+				},
+			},
+			strict:   true,
+			wantName: "strict_tool",
+		},
+	}
 
-      for _, tt := range tests {
-          t.Run(tt.name, func(t *testing.T) {
-              mockServer := &MockMCPServer{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockServer := &MockMCPServer{}
 
-              ft, err := tool.ToFunctionTool(tt.mcpTool, mockServer, tt.strict)
+			ft, err := tool.ToFunctionTool(tt.mcpTool, mockServer, tt.strict)
 
-              require.NoError(t, err)
-              assert.Equal(t, tt.wantName, ft.Name)
-              assert.Equal(t, tt.wantDesc, ft.Description)
-              assert.NotNil(t, ft.OnInvokeTool)
-              assert.NotNil(t, ft.ParamsJSONSchema)
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantName, ft.Name)
+			assert.Equal(t, tt.wantDesc, ft.Description)
+			assert.NotNil(t, ft.OnInvokeTool)
+			assert.NotNil(t, ft.ParamsJSONSchema)
 
-              // 验证 schema 包含 properties
-              props, ok := ft.ParamsJSONSchema["properties"]
-              assert.True(t, ok, "schema should have properties")
-              assert.NotNil(t, props)
-          })
-      }
-  }
+			// 验证 schema 包含 properties
+			props, ok := ft.ParamsJSONSchema["properties"]
+			assert.True(t, ok, "schema should have properties")
+			assert.NotNil(t, props)
+		})
+	}
+}
 
-  func TestInvokeMCPTool(t *testing.T) {
-      tests := []struct {
-          name        string
-          tool        *mcp.Tool
-          input       string
-          mockResult  *mcp.CallToolResult
-          mockErr     error
-          wantContain string
-          wantErr     bool
-          errContains string
-      }{
-          {
-              name:  "successful call",
-              tool:  &mcp.Tool{Name: "test_tool"},
-              input: `{"key": "value"}`,
-              mockResult: &mcp.CallToolResult{
-                  Content: []mcp.Content{
-                      &mcp.TextContent{Text: "success"},
-                  },
-              },
-              wantContain: "success",
-          },
-          {
-              name:  "empty input",
-              tool:  &mcp.Tool{Name: "no_params"},
-              input: "",
-              mockResult: &mcp.CallToolResult{
-                  Content: []mcp.Content{},
-              },
-              wantContain: "[]",
-          },
-          {
-              name:        "invalid JSON input",
-              tool:        &mcp.Tool{Name: "test_tool"},
-              input:       "invalid json",
-              wantErr:     true,
-              errContains: "invalid input",
-          },
-          {
-              name:        "server error",
-              tool:        &mcp.Tool{Name: "error_tool"},
-              input:       `{}`,
-              mockErr:     errors.New("server error"),
-              wantErr:     true,
-              errContains: "invoke error_tool",
-          },
-          {
-              name:  "multiple content items",
-              tool:  &mcp.Tool{Name: "multi_tool"},
-              input: `{}`,
-              mockResult: &mcp.CallToolResult{
-                  Content: []mcp.Content{
-                      &mcp.TextContent{Text: "first"},
-                      &mcp.TextContent{Text: "second"},
-                  },
-              },
-              wantContain: "first",
-          },
-      }
+func TestInvokeMCPTool(t *testing.T) {
+	tests := []struct {
+		name        string
+		tool        *mcp.Tool
+		input       string
+		mockResult  *mcp.CallToolResult
+		mockErr     error
+		wantContain string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:  "successful call",
+			tool:  &mcp.Tool{Name: "test_tool"},
+			input: `{"key": "value"}`,
+			mockResult: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "success"},
+				},
+			},
+			wantContain: "success",
+		},
+		{
+			name:  "empty input",
+			tool:  &mcp.Tool{Name: "no_params"},
+			input: "",
+			mockResult: &mcp.CallToolResult{
+				Content: []mcp.Content{},
+			},
+			wantContain: "[]",
+		},
+		{
+			name:        "invalid JSON input",
+			tool:        &mcp.Tool{Name: "test_tool"},
+			input:       "invalid json",
+			wantErr:     true,
+			errContains: "invalid input",
+		},
+		{
+			name:        "server error",
+			tool:        &mcp.Tool{Name: "error_tool"},
+			input:       `{}`,
+			mockErr:     errors.New("server error"),
+			wantErr:     true,
+			errContains: "invoke error_tool",
+		},
+		{
+			name:  "multiple content items",
+			tool:  &mcp.Tool{Name: "multi_tool"},
+			input: `{}`,
+			mockResult: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "first"},
+					&mcp.TextContent{Text: "second"},
+				},
+			},
+			wantContain: "first",
+		},
+	}
 
-      for _, tt := range tests {
-          t.Run(tt.name, func(t *testing.T) {
-              mockServer := &MockMCPServer{
-                  callToolFunc: func(ctx context.Context, name string, args map[string]any) (*mcp.CallToolResult, error) {
-                      if tt.mockErr != nil {
-                          return nil, tt.mockErr
-                      }
-                      return tt.mockResult, nil
-                  },
-              }
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockServer := &MockMCPServer{
+				callToolFunc: func(ctx context.Context, name string, args map[string]any) (*mcp.CallToolResult, error) {
+					if tt.mockErr != nil {
+						return nil, tt.mockErr
+					}
+					return tt.mockResult, nil
+				},
+			}
 
-              result, err := tool.InvokeMCPTool(context.Background(), mockServer, tt.tool, tt.input)
+			result, err := tool.InvokeMCPTool(context.Background(), mockServer, tt.tool, tt.input)
 
-              if tt.wantErr {
-                  require.Error(t, err)
-                  if tt.errContains != "" {
-                      assert.Contains(t, err.Error(), tt.errContains)
-                  }
-                  return
-              }
-              require.NoError(t, err)
-              assert.Contains(t, result, tt.wantContain)
-          })
-      }
-  }
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+			require.NoError(t, err)
+			assert.Contains(t, result, tt.wantContain)
+		})
+	}
+}
 
 func TestGetFunctionTools(t *testing.T) {
 	t.Run("get tools from server", func(t *testing.T) {

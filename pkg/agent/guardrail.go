@@ -3,7 +3,7 @@ package agent
 import (
 	"context"
 
-	"nvgo/pkg/types"
+	"github.com/chuanbosi666/agent_go/pkg/types"
 )
 
 // GuardrailFunctionOutput represents the result of a guardrail check.

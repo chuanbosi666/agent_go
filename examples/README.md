@@ -1,6 +1,6 @@
-# nvgo 示例代码
+# github.com/chuanbosi666/agent_go 示例代码
 
-本目录包含 nvgo 框架的各种使用示例，帮助你快速上手。
+本目录包含 github.com/chuanbosi666/agent_go 框架的各种使用示例，帮助你快速上手。
 
 ## 示例列表
 
@@ -12,6 +12,10 @@
 | [04-react](./04-react/) | ReAct 模式 - 思考-行动-观察循环 | ⭐⭐⭐ 进阶 |
 | [05-guardrails](./05-guardrails/) | 护栏功能 - 输入输出安全检查 | ⭐⭐ 基础 |
 | [06-session](./06-session/) | 会话管理 - 多轮对话和历史存储 | ⭐⭐ 基础 |
+| [07-custom-endpoint](./07-custom-endpoint/) | 自定义端点 - 连接非 OpenAI API | ⭐ 入门 |
+| [08-multi-model](./08-multi-model/) | 多模型切换 - 动态选择模型 | ⭐⭐ 基础 |
+| [09-dynamic-config](./09-dynamic-config/) | 动态配置 - 环境变量配置 | ⭐ 入门 |
+| [10-dev-team](./10-dev-team/) | 开发团队 - 全自动软件开发多智能体系统 | ⭐⭐⭐⭐ 高级 |
 
 ## 快速开始
 
@@ -58,18 +62,18 @@ go run main.go
 
 ### 01-basic: 基础用法
 
-最简单的 nvgo 使用示例，展示如何：
+最简单的 github.com/chuanbosi666/agent_go 使用示例，展示如何：
 - 创建 OpenAI 客户端
 - 使用 Builder 模式配置 Agent
 - 运行 Agent 并获取结果
 
 ```go
-agent := nvgo.New("助手").
+agent := github.com/chuanbosi666/agent_go.New("助手").
     WithInstructions("你是一个友好的 AI 助手").
     WithModel("gpt-4o-mini").
     WithClient(client)
 
-result, err := nvgo.Run(ctx, agent, "你好！")
+result, err := github.com/chuanbosi666/agent_go.Run(ctx, agent, "你好！")
 ```
 
 ### 02-tools: 工具调用
@@ -107,15 +111,28 @@ result, err := nvgo.Run(ctx, agent, "你好！")
 - 多轮对话上下文保持
 - 对话历史管理
 
+### 10-dev-team: 全自动软件开发团队
+
+展示复杂多智能体系统：
+- Manager Agent 作为总协调者
+- REQ-Agent（产品经理）：需求分析
+- ARCH-Agent（架构师）：系统设计
+- CODE-Agent（程序员）：代码实现
+- TEST-Agent（测试员）：测试验证
+- 完整的文件操作和命令执行工具
+- 目录沙箱安全机制
+
 ## 学习路径
 
 建议按以下顺序学习：
 
 1. **入门**: 01-basic → 理解基本概念
-2. **工具**: 02-tools → 学习工具调用
-3. **会话**: 06-session → 掌握多轮对话
-4. **安全**: 05-guardrails → 了解安全机制
-5. **进阶**: 03-multi-agent, 04-react → 高级模式
+2. **配置**: 07-custom-endpoint, 09-dynamic-config → 了解配置方式
+3. **工具**: 02-tools → 学习工具调用
+4. **会话**: 06-session → 掌握多轮对话
+5. **安全**: 05-guardrails → 了解安全机制
+6. **进阶**: 03-multi-agent, 04-react → 高级模式
+7. **高级**: 10-dev-team → 完整的多智能体系统
 
 ## 注意事项
 

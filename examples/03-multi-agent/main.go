@@ -1,4 +1,4 @@
-// Package main 演示 nvgo 的多 Agent 协作模式（Agent-as-Tool）
+// Package main 演示 agentgo 的多 Agent 协作模式（Agent-as-Tool）
 //
 // 本示例展示如何使用 WrapAgentAsTool 将一个 Agent 包装成工具，
 // 让主 Agent 可以调用其他专业 Agent 来完成特定任务。
@@ -25,13 +25,13 @@ import (
 	"log"
 	"os"
 
-	nvgo "nvgo"
+	agentgo "github.com/chuanbosi666/agent_go"
 	"github.com/openai/openai-go/v3"
 )
 
 // 创建数学专家 Agent
-func createMathExpert(client openai.Client) *nvgo.Agent {
-	return nvgo.New("数学专家").
+func createMathExpert(client openai.Client) *agentgo.Agent {
+	return agentgo.New("数学专家").
 		WithInstructions(`你是一位数学专家，擅长:
 - 解决数学问题
 - 解释数学概念
@@ -44,8 +44,8 @@ func createMathExpert(client openai.Client) *nvgo.Agent {
 }
 
 // 创建翻译专家 Agent
-func createTranslator(client openai.Client) *nvgo.Agent {
-	return nvgo.New("翻译专家").
+func createTranslator(client openai.Client) *agentgo.Agent {
+	return agentgo.New("翻译专家").
 		WithInstructions(`你是一位专业翻译，精通中英日韩多种语言。
 
 翻译原则:
@@ -60,8 +60,8 @@ func createTranslator(client openai.Client) *nvgo.Agent {
 }
 
 // 创建写作专家 Agent
-func createWriter(client openai.Client) *nvgo.Agent {
-	return nvgo.New("写作专家").
+func createWriter(client openai.Client) *agentgo.Agent {
+	return agentgo.New("写作专家").
 		WithInstructions(`你是一位专业写作专家，擅长:
 - 文章撰写和润色
 - 创意写作
@@ -74,13 +74,13 @@ func createWriter(client openai.Client) *nvgo.Agent {
 }
 
 // 创建协调者 Agent（主 Agent）
-func createCoordinator(client openai.Client, mathExpert, translator, writer *nvgo.Agent) *nvgo.Agent {
+func createCoordinator(client openai.Client, mathExpert, translator, writer *agentgo.Agent) *agentgo.Agent {
 	// 将专家 Agent 包装成工具
-	mathTool := nvgo.WrapAgentAsTool(mathExpert, 3)
-	translateTool := nvgo.WrapAgentAsTool(translator, 3)
-	writerTool := nvgo.WrapAgentAsTool(writer, 3)
+	mathTool := agentgo.WrapAgentAsTool(mathExpert, 3)
+	translateTool := agentgo.WrapAgentAsTool(translator, 3)
+	writerTool := agentgo.WrapAgentAsTool(writer, 3)
 
-	return nvgo.New("协调者").
+	return agentgo.New("协调者").
 		WithInstructions(`你是一个智能协调者，可以调用以下专家来帮助用户:
 
 1. 数学专家 (Call_agent_数学专家): 处理数学问题、计算、公式等
@@ -96,7 +96,7 @@ func createCoordinator(client openai.Client, mathExpert, translator, writer *nvg
 如果任务需要多个专家配合，请按顺序调用。`).
 		WithModel("gpt-4o-mini").
 		WithClient(client).
-		WithTools([]nvgo.FunctionTool{
+		WithTools([]agentgo.FunctionTool{
 			mathTool,
 			translateTool,
 			writerTool,
@@ -122,8 +122,8 @@ func main() {
 	coordinator := createCoordinator(client, mathExpert, translator, writer)
 
 	// 配置 Runner
-	runner := nvgo.Runner{
-		Config: nvgo.RunConfig{
+	runner := agentgo.Runner{
+		Config: agentgo.RunConfig{
 			MaxTurns: 10, // 允许更多轮次以完成多步骤任务
 		},
 	}

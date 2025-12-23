@@ -5,7 +5,7 @@ A Go library to convert JSON Schemas into a strict format compatible with OpenAI
 ## Usage
 
 ```go
-import "github.com/demo/nvgo/internal/strictschema"
+import "github.com/demo/github.com/chuanbosi666/agent_go/internal/strictschema"
 
 schema := map[string]any{ /* your JSON schema */ }
 strict, err := strictschema.EnsureStrictJSONSchema(schema)

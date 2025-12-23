@@ -1,8 +1,8 @@
 <h1 align="center">
-  <img src="./internal/nvgo.png" alt="NVGo Logo" width="200">
+  <img src="./internal/github.com/chuanbosi666/agent_go.png" alt="github.com/chuanbosi666/agent_go Logo" width="200">
 </h1>
 <h2 align="center">
-  <b>NVGo: Elegant multi-agent workflows in Go</b>
+  <b>github.com/chuanbosi666/agent_go: Elegant multi-agent workflows in Go</b>
 </h2>
 
 <p align="center">
@@ -16,7 +16,7 @@
 
 ---
 
-**nvgo** 是一个 Go 语言的 AI Agent 框架，参考 [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) 设计。它提供了构建智能 Agent 应用所需的全部功能。
+**github.com/chuanbosi666/agent_go** 是一个 Go 语言的 AI Agent 框架，参考 [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) 设计。它提供了构建智能 Agent 应用所需的全部功能。
 
 ## 特性
 
@@ -63,7 +63,7 @@ import (
     "fmt"
     "log"
 
-    nvgo "github.com/agent_go"
+    agentgo "github.com/agent_go"
     "github.com/openai/openai-go/v3"
 )
 
@@ -72,14 +72,14 @@ func main() {
     client := openai.NewClient()
 
     // 创建 Agent
-    agent := nvgo.New("助手").
+    agent := github.com/chuanbosi666/agent_go.New("助手").
         WithInstructions("你是一个友好的 AI 助手").
         WithModel("gpt-4o-mini").
         WithClient(client)
 
     // 运行
     ctx := context.Background()
-    result, err := nvgo.Run(ctx, agent, "你好！")
+    result, err := github.com/chuanbosi666/agent_go.Run(ctx, agent, "你好！")
     if err != nil {
         log.Fatal(err)
     }
@@ -92,7 +92,7 @@ func main() {
 
 ```go
 // 定义工具
-calculator := nvgo.FunctionTool{
+calculator := github.com/chuanbosi666/agent_go.FunctionTool{
     Name:        "calculator",
     Description: "执行数学计算",
     ParamsJSONSchema: map[string]any{
@@ -112,11 +112,11 @@ calculator := nvgo.FunctionTool{
 }
 
 // 添加到 Agent
-agent := nvgo.New("计算助手").
+agent := github.com/chuanbosi666/agent_go.New("计算助手").
     WithInstructions("你是一个计算助手").
     WithModel("gpt-4o-mini").
     WithClient(client).
-    WithTools([]nvgo.FunctionTool{calculator})
+    WithTools([]github.com/chuanbosi666/agent_go.FunctionTool{calculator})
 ```
 
 ### 4. 多轮对话
@@ -130,8 +130,8 @@ session, _ := memory.NewSQLiteSession(ctx, memory.SQLiteSessionConfig{
 defer session.Close()
 
 // 配置 Runner
-runner := nvgo.Runner{
-    Config: nvgo.RunConfig{
+runner := github.com/chuanbosi666/agent_go.Runner{
+    Config: github.com/chuanbosi666/agent_go.RunConfig{
         Session: session,
     },
 }
@@ -166,8 +166,8 @@ Runner 执行 Agent 的主循环：
 4. 重复直到生成最终输出
 
 ```go
-runner := nvgo.Runner{
-    Config: nvgo.RunConfig{
+runner := github.com/chuanbosi666/agent_go.Runner{
+    Config: github.com/chuanbosi666/agent_go.RunConfig{
         MaxTurns: 10,          // 最大执行轮次
         Session:  session,      // 会话管理
         ToolRouter: router,     // 工具路由
@@ -180,7 +180,7 @@ runner := nvgo.Runner{
 FunctionTool 定义 Agent 可调用的工具：
 
 ```go
-tool := nvgo.FunctionTool{
+tool := github.com/chuanbosi666/agent_go.FunctionTool{
     Name:             "tool_name",
     Description:      "工具描述",
     ParamsJSONSchema: schema,
@@ -196,19 +196,19 @@ tool := nvgo.FunctionTool{
 
 ```go
 // 输入护栏
-inputGuardrail := nvgo.NewInputGuardrail("check_input",
-    func(ctx context.Context, agent *nvgo.Agent, input nvgo.Input) (nvgo.GuardrailFunctionOutput, error) {
+inputGuardrail := github.com/chuanbosi666/agent_go.NewInputGuardrail("check_input",
+    func(ctx context.Context, agent *github.com/chuanbosi666/agent_go.Agent, input github.com/chuanbosi666/agent_go.Input) (github.com/chuanbosi666/agent_go.GuardrailFunctionOutput, error) {
         // 检查输入
-        return nvgo.GuardrailFunctionOutput{
+        return github.com/chuanbosi666/agent_go.GuardrailFunctionOutput{
             TripwireTriggered: false, // true 会停止执行
         }, nil
     })
 
 // 输出护栏
-outputGuardrail := nvgo.NewOutputGuardrail("check_output",
-    func(ctx context.Context, agent *nvgo.Agent, output any) (nvgo.GuardrailFunctionOutput, error) {
+outputGuardrail := github.com/chuanbosi666/agent_go.NewOutputGuardrail("check_output",
+    func(ctx context.Context, agent *github.com/chuanbosi666/agent_go.Agent, output any) (github.com/chuanbosi666/agent_go.GuardrailFunctionOutput, error) {
         // 检查输出
-        return nvgo.GuardrailFunctionOutput{
+        return github.com/chuanbosi666/agent_go.GuardrailFunctionOutput{
             TripwireTriggered: false,
         }, nil
     })
@@ -251,7 +251,7 @@ go run main.go
 ### Agent Builder 方法
 
 ```go
-nvgo.New("name")                        // 创建 Agent
+github.com/chuanbosi666/agent_go.New("name")                        // 创建 Agent
     .WithInstructions("prompt")         // 设置系统提示词
     .WithModel("gpt-4o")                // 设置模型
     .WithClient(client)                 // 设置 OpenAI 客户端
@@ -265,7 +265,7 @@ nvgo.New("name")                        // 创建 Agent
 ### Runner 配置
 
 ```go
-nvgo.RunConfig{
+github.com/chuanbosi666/agent_go.RunConfig{
     MaxTurns:             10,       // 最大轮次
     Session:              session,  // 会话
     ToolRouter:           router,   // 工具路由
@@ -280,22 +280,22 @@ nvgo.RunConfig{
 **Agent-as-Tool（多 Agent 协作）**
 
 ```go
-subAgent := nvgo.New("专家").WithInstructions("...")
-tool := nvgo.WrapAgentAsTool(subAgent, 5)
-mainAgent.WithTools([]nvgo.FunctionTool{tool})
+subAgent := github.com/chuanbosi666/agent_go.New("专家").WithInstructions("...")
+tool := github.com/chuanbosi666/agent_go.WrapAgentAsTool(subAgent, 5)
+mainAgent.WithTools([]github.com/chuanbosi666/agent_go.FunctionTool{tool})
 ```
 
 **ReAct 模式**
 
 ```go
-agent := nvgo.New("ReAct").
-    WithInstructionsGetter(nvgo.DefaultReActInstruction)
+agent := github.com/chuanbosi666/agent_go.New("ReAct").
+    WithInstructionsGetter(github.com/chuanbosi666/agent_go.DefaultReActInstruction)
 ```
 
 **工具路由**
 
 ```go
-router := &nvgo.KeywordRouter{
+router := &github.com/chuanbosi666/agent_go.KeywordRouter{
     ToolKeywords: map[string][]string{
         "calculator": {"计算", "加", "减", "乘", "除"},
         "weather":    {"天气", "温度", "下雨"},
@@ -308,7 +308,7 @@ runner.Config.ToolRouter = router
 ## 项目结构
 
 ```
-nvgo/
+github.com/chuanbosi666/agent_go/
 ├── agent.go          # Agent 定义
 ├── runner.go         # 执行引擎
 ├── tool.go           # 工具接口

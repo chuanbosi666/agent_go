@@ -1,15 +1,15 @@
-package nvgo_test
+package agentgo
 
 import (
 	"context"
 	"strings"
 	"testing"
 
-	"nvgo/pkg/agent"
-	"nvgo/pkg/types"
-	"nvgo/pkg/pattern"
-	"nvgo/pkg/runner"
-	"nvgo/pkg/tool"
+	"github.com/chuanbosi666/agent_go/pkg/agent"
+	"github.com/chuanbosi666/agent_go/pkg/pattern"
+	"github.com/chuanbosi666/agent_go/pkg/runner"
+	"github.com/chuanbosi666/agent_go/pkg/tool"
+	"github.com/chuanbosi666/agent_go/pkg/types"
 
 	"github.com/openai/openai-go/v3/packages/param"
 	"github.com/openai/openai-go/v3/responses"
@@ -476,7 +476,7 @@ func TestWrapAgentAsTool(t *testing.T) {
 
 		agentTool := pattern.WrapAgentAsTool(subAgent, 5)
 
-		expectedName := "Call_agent_SubAgent"
+		expectedName := "call_agent_SubAgent"
 		if agentTool.Name != expectedName {
 			t.Errorf("expected tool name %q, got %q", expectedName, agentTool.Name)
 		}
@@ -500,7 +500,7 @@ func TestWrapAgentAsTool(t *testing.T) {
 		// 传入 0，应该使用 DefaultMaxTurns
 		agentTool := pattern.WrapAgentAsTool(subAgent, 0)
 
-		if agentTool.Name != "Call_agent_TestAgent" {
+		if agentTool.Name != "call_agent_TestAgent" {
 			t.Errorf("unexpected tool name: %s", agentTool.Name)
 		}
 
@@ -588,7 +588,7 @@ func TestWrapAgentAsTool(t *testing.T) {
 
 		// 验证实现了 Tool 接口
 		var toolInterface tool.Tool = agentTool
-		if toolInterface.ToolName() != "Call_agent_InterfaceTestAgent" {
+		if toolInterface.ToolName() != "call_agent_InterfaceTestAgent" {
 			t.Errorf("ToolName() returned unexpected value: %s", toolInterface.ToolName())
 		}
 
@@ -615,7 +615,7 @@ func TestWrapAgentAsTool(t *testing.T) {
 			t.Fatalf("expected 1 tool, got %d", len(mainAgent.Tools))
 		}
 
-		if mainAgent.Tools[0].Name != "Call_agent_HelperAgent" {
+		if mainAgent.Tools[0].Name != "call_agent_HelperAgent" {
 			t.Errorf("unexpected tool name: %s", mainAgent.Tools[0].Name)
 		}
 
@@ -752,18 +752,18 @@ func TestReActStateProvider(t *testing.T) {
 		}
 
 		// 验证初始步骤
-		if state["current_step"] != "第 1 步" {
-			t.Errorf("expected '第 1 步', got %q", state["current_step"])
+		if state["current_step"] != "1" {
+			t.Errorf("expected '1', got %q", state["current_step"])
 		}
 
 		// 验证初始观察为空
-		if state["observations"] != "" {
-			t.Errorf("expected empty observations, got %q", state["observations"])
+		if state["observations_summary"] != "" {
+			t.Errorf("expected empty observations, got %q", state["observations_summary"])
 		}
 
 		// 验证观察计数
-		if state["observation_count"] != "0" {
-			t.Errorf("expected '0', got %q", state["observation_count"])
+		if state["total_observations"] != "0" {
+			t.Errorf("expected '0', got %q", state["total_observations"])
 		}
 	})
 
@@ -780,21 +780,21 @@ func TestReActStateProvider(t *testing.T) {
 		}
 
 		// 验证步骤递增 (初始1 + 2次观察 = 第3步)
-		if state["current_step"] != "第 3 步" {
-			t.Errorf("expected '第 3 步', got %q", state["current_step"])
+		if state["current_step"] != "3" {
+			t.Errorf("expected '3', got %q", state["current_step"])
 		}
 
 		// 验证观察结果包含添加的内容
-		if !strings.Contains(state["observations"], "天气查询结果") {
+		if !strings.Contains(state["observations_summary"], "天气查询结果") {
 			t.Error("expected observations to contain '天气查询结果'")
 		}
-		if !strings.Contains(state["observations"], "日程查询结果") {
+		if !strings.Contains(state["observations_summary"], "日程查询结果") {
 			t.Error("expected observations to contain '日程查询结果'")
 		}
 
 		// 验证观察计数
-		if state["observation_count"] != "2" {
-			t.Errorf("expected '2', got %q", state["observation_count"])
+		if state["total_observations"] != "2" {
+			t.Errorf("expected '2', got %q", state["total_observations"])
 		}
 	})
 
@@ -814,14 +814,14 @@ func TestReActStateProvider(t *testing.T) {
 		}
 
 		// 验证恢复到初始状态
-		if state["current_step"] != "第 1 步" {
-			t.Errorf("expected '第 1 步' after reset, got %q", state["current_step"])
+		if state["current_step"] != "1" {
+			t.Errorf("expected '1' after reset, got %q", state["current_step"])
 		}
-		if state["observations"] != "" {
-			t.Errorf("expected empty observations after reset, got %q", state["observations"])
+		if state["observations_summary"] != "" {
+			t.Errorf("expected empty observations after reset, got %q", state["observations_summary"])
 		}
-		if state["observation_count"] != "0" {
-			t.Errorf("expected '0' after reset, got %q", state["observation_count"])
+		if state["total_observations"] != "0" {
+			t.Errorf("expected '0' after reset, got %q", state["total_observations"])
 		}
 	})
 }
@@ -836,7 +836,6 @@ func TestNewReActInstruction(t *testing.T) {
 			t.Fatalf("get instructions failed: %v", err)
 		}
 
-		// 验证包含默认模板的关键内容
 		if !strings.Contains(result, "ReAct") {
 			t.Error("expected instruction to contain 'ReAct'")
 		}
@@ -860,7 +859,6 @@ func TestNewReActInstruction(t *testing.T) {
 			t.Fatalf("get instructions failed: %v", err)
 		}
 
-		// 验证包含自定义规则
 		if !strings.Contains(result, "额外规则") {
 			t.Error("expected instruction to contain '额外规则'")
 		}
@@ -882,8 +880,8 @@ func TestReActWithDynamicInstruction(t *testing.T) {
 
 ## 当前进度
 - 步骤: {{current_step}}
-- 已观察: {{observations}}
-- 观察次数: {{observation_count}}
+- 已观察: {{observations_summary}}
+- 观察次数: {{total_observations}}
 
 ` + string(pattern.DefaultReActInstruction),
 	}
@@ -894,8 +892,8 @@ func TestReActWithDynamicInstruction(t *testing.T) {
 		t.Fatalf("get instructions failed: %v", err)
 	}
 
-	if !strings.Contains(result, "第 1 步") {
-		t.Error("expected '第 1 步' in initial instruction")
+	if !strings.Contains(result, "1") {
+		t.Error("expected '1' in initial instruction")
 	}
 
 	// 添加观察后
@@ -906,8 +904,8 @@ func TestReActWithDynamicInstruction(t *testing.T) {
 		t.Fatalf("get instructions failed: %v", err)
 	}
 
-	if !strings.Contains(result, "第 2 步") {
-		t.Error("expected '第 2 步' after observation")
+	if !strings.Contains(result, "2") {
+		t.Error("expected '2' after observation")
 	}
 	if !strings.Contains(result, "工具执行成功") {
 		t.Error("expected observation in instruction")

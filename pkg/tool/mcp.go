@@ -8,8 +8,8 @@ import (
 	"slices"
 	"sync"
 
-	"nvgo/internal/strictschema"
-	"nvgo/pkg/types"
+	"github.com/chuanbosi666/agent_go/internal/strictschema"
+	"github.com/chuanbosi666/agent_go/pkg/types"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/openai/openai-go/v3/packages/param"

@@ -1,7 +1,7 @@
-// Package main 演示 nvgo 的 Session 会话管理功能
+// Package main 演示 agentgo 的 Session 会话管理功能
 //
 // Session 用于保存和管理对话历史，实现多轮对话。
-// nvgo 提供了 SQLiteSession 实现，支持内存存储和文件存储。
+// agentgo 提供了 SQLiteSession 实现，支持内存存储和文件存储。
 //
 // 主要功能:
 //   - 保存对话历史
@@ -25,8 +25,9 @@ import (
 	"os"
 	"strings"
 
-	nvgo "nvgo"
-	"nvgo/pkg/memory"
+	agentgo "github.com/chuanbosi666/agent_go"
+
+	"github.com/chuanbosi666/agent_go/pkg/memory"
 	"github.com/openai/openai-go/v3"
 )
 
@@ -56,7 +57,7 @@ func main() {
 	client := openai.NewClient()
 
 	// 创建 Agent
-	agent := nvgo.New("记忆助手").
+	agent := agentgo.New("记忆助手").
 		WithInstructions(`你是一个有记忆的 AI 助手。
 你可以记住用户之前说过的内容，并在后续对话中引用。
 请用友好、自然的方式与用户交流。`).
@@ -64,8 +65,8 @@ func main() {
 		WithClient(client)
 
 	// 创建带 Session 的 Runner
-	runner := nvgo.Runner{
-		Config: nvgo.RunConfig{
+	runner := agentgo.Runner{
+		Config: agentgo.RunConfig{
 			MaxTurns: 5,
 			Session:  session, // 关键：设置 Session
 		},
@@ -89,7 +90,7 @@ func main() {
 }
 
 // runDemoConversation 运行预设的演示对话
-func runDemoConversation(ctx context.Context, runner nvgo.Runner, agent *nvgo.Agent) {
+func runDemoConversation(ctx context.Context, runner agentgo.Runner, agent *agentgo.Agent) {
 	conversations := []string{
 		"你好，我叫小明",
 		"我最喜欢的颜色是蓝色",
@@ -117,7 +118,7 @@ func runDemoConversation(ctx context.Context, runner nvgo.Runner, agent *nvgo.Ag
 }
 
 // runInteractiveConversation 运行交互式对话
-func runInteractiveConversation(ctx context.Context, runner nvgo.Runner, agent *nvgo.Agent, session *memory.SQLiteSession) {
+func runInteractiveConversation(ctx context.Context, runner agentgo.Runner, agent *agentgo.Agent, session *memory.SQLiteSession) {
 	scanner := bufio.NewScanner(os.Stdin)
 	turn := 0
 

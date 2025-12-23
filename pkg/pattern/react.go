@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 
-	"nvgo/pkg/agent"
+	"github.com/chuanbosi666/agent_go/pkg/agent"
 )
 
 // DefaultReActInstruction provides standard ReAct prompting with structured reasoning.

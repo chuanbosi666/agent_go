@@ -1,7 +1,7 @@
-// Package main 演示 nvgo 框架的基础用法
+// Package main 演示 agentgo 框架的基础用法
 //
 // 本示例展示如何创建一个简单的 AI Agent 并与其对话。
-// 这是使用 nvgo 的最简单方式，适合快速入门。
+// 这是使用 agentgo 的最简单方式，适合快速入门。
 //
 // 运行前请确保设置环境变量:
 //
@@ -18,7 +18,7 @@ import (
 	"log"
 	"os"
 
-	nvgo "nvgo"
+	agentgo "github.com/chuanbosi666/agent_go"
 	"github.com/openai/openai-go/v3"
 )
 
@@ -34,14 +34,14 @@ func main() {
 
 	// 3. 创建 Agent
 	// 使用 Builder 模式配置 Agent 的各项属性
-	agent := nvgo.New("助手"). // Agent 名称
+	agent := agentgo.New("助手"). // Agent 名称
 					WithInstructions("你是一个友好的 AI 助手，请用简洁的中文回答问题。"). // 系统提示词
 					WithModel("gpt-4o-mini").                             // 使用的模型
 					WithClient(client)                                    // OpenAI 客户端
 
 	// 4. 创建 Runner 并执行
 	ctx := context.Background()
-	result, err := nvgo.Run(ctx, agent, "你好！请介绍一下你自己。")
+	result, err := agentgo.Run(ctx, agent, "你好！请介绍一下你自己。")
 	if err != nil {
 		log.Fatalf("运行失败: %v", err)
 	}

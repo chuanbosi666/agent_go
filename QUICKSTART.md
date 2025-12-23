@@ -1,4 +1,4 @@
-# nvgo 快速启动指南
+# github.com/chuanbosi666/agent_go 快速启动指南
 
 ## 📋 项目状态
 
@@ -58,7 +58,7 @@ import (
     "context"
     "log"
 
-    nvgo "nvgo"
+    github.com/chuanbosi666/agent_go "github.com/chuanbosi666/agent_go"
     "github.com/openai/openai-go/v3"
     "github.com/openai/openai-go/v3/option"
 )
@@ -71,13 +71,13 @@ func main() {
     )
 
     // 创建 Agent
-    agent := nvgo.New("助手").
+    agent := github.com/chuanbosi666/agent_go.New("助手").
         WithInstructions("你是一个友好的 AI 助手").
         WithModel("your-model-name").
         WithClient(client)
 
     // 运行
-    result, _ := nvgo.Run(context.Background(), agent, "你好！")
+    result, _ := github.com/chuanbosi666/agent_go.Run(context.Background(), agent, "你好！")
     log.Println(result.FinalOutput)
 }
 ```
@@ -96,7 +96,7 @@ github.com/mattn/go-sqlite3            # SQLite 会话存储
 
 ## 🔧 支持的 API
 
-nvgo 支持任何 **OpenAI 兼容的 API**，包括：
+github.com/chuanbosi666/agent_go 支持任何 **OpenAI 兼容的 API**，包括：
 
 | 提供商 | 说明 | 配置方式 |
 |--------|------|---------|
@@ -119,7 +119,7 @@ OPENAI_BASE_URL=https://openrouter.ai/api/v1
 
 ```go
 // 切换模型只需改一行！
-agent := nvgo.New("助手").
+agent := github.com/chuanbosi666/agent_go.New("助手").
     WithModel("anthropic/claude-3.5-sonnet"). // Claude
     // WithModel("google/gemini-flash-1.5").  // Gemini
     // WithModel("deepseek/deepseek-chat").   // DeepSeek
@@ -187,8 +187,8 @@ A: 支持任何 OpenAI Chat Completions API 兼容的模型
 ## 📊 项目结构
 
 ```
-nvgo-main/
-├── nvgo.go              # 主入口（导出所有 API）
+github.com/chuanbosi666/agent_go-main/
+├── github.com/chuanbosi666/agent_go.go              # 主入口（导出所有 API）
 ├── pkg/                 # 核心包
 │   ├── agent/          # Agent 定义
 │   ├── runner/         # 执行引擎

@@ -5,22 +5,22 @@ import (
 	"fmt"
 	"log"
 
-	nvgo "nvgo"
+	agentgo "github.com/chuanbosi666/agent_go"
 
 	"github.com/openai/openai-go/v3/packages/param"
 )
 
 func main() {
-	fmt.Println("=== nvgo 动态模型配置示例 ===\n")
+	fmt.Println("=== github.com/chuanbosi666/agent_go 动态模型配置示例 ===")
 
 	// ========== 方式 1：手动注册配置 ==========
 	fmt.Println("【方式 1】手动注册多个模型配置")
 
 	// 创建注册表
-	registry := nvgo.NewModelRegistry()
+	registry := agentgo.NewModelRegistry()
 
 	// 注册配置 1：OpenAI
-	registry.Registry(nvgo.ModelConfig{
+	registry.Registry(agentgo.ModelConfig{
 			Name:    "openai",
 			BaseURL: "https://api.openai.com/v1",
 			APIKey:  "your-openai-key",
@@ -28,7 +28,7 @@ func main() {
 	})
 
 	// 注册配置 2：本地 Ollama
-	registry.Registry(nvgo.ModelConfig{
+	registry.Registry(agentgo.ModelConfig{
 			Name:    "ollama",
 			BaseURL: "http://localhost:11434/v1",
 			APIKey:  "ollama",
@@ -36,7 +36,7 @@ func main() {
 	})
 
 	// 注册配置 3：自定义服务
-	registry.Registry(nvgo.ModelConfig{
+	registry.Registry(agentgo.ModelConfig{
 			Name:    "custom",
 			BaseURL: "https://your-api.example.com/v1",
 			APIKey:  "your-custom-key",
@@ -82,10 +82,10 @@ func main() {
 	// ========== 方式 3：高级配置 ==========
 	fmt.Println("\n【方式 3】使用高级配置（添加工具、护栏等）")
 
-	agent3, err := registry.CreateAgentWithOptions("openai", func(a *nvgo.Agent) *nvgo.Agent {
+	agent3, err := registry.CreateAgentWithOptions("openai", func(a *agentgo.Agent) *agentgo.Agent {
 			return a.
 					WithInstructions("你是一个专业的编程助手").
-					WithModelSettings(nvgo.ModelSettings{
+					WithModelSettings(agentgo.ModelSettings{
 							Temperature: param.NewOpt(0.7),
 							MaxTokens:   param.NewOpt[int64](2000),
 					})
@@ -103,7 +103,7 @@ func main() {
 	// ========== 方式 4：保存配置到文件 ==========
 	fmt.Println("\n【方式 4】保存配置到 JSON 文件")
 
-	err = nvgo.SaveToFile(registry, "models.json")
+	err = agentgo.SaveToFile(registry, "models.json")
 	if err != nil {
 			log.Printf("保存失败: %v\n", err)
 	} else {
@@ -113,7 +113,7 @@ func main() {
 	// ========== 方式 5：从文件加载配置 ==========
 	fmt.Println("\n【方式 5】从 JSON 文件加载配置")
 
-	registry2, err := nvgo.LoadFromFile("models.json")
+	registry2, err := agentgo.LoadFromFile("models.json")
 	if err != nil {
 			log.Printf("加载失败: %v\n", err)
 	} else {
@@ -129,7 +129,7 @@ func main() {
 
 	// 如果你有 OpenAI API Key，可以测试
 	if agent1 != nil {
-			result, err := nvgo.Run(ctx, agent1, "用一句话介绍你自己")
+			result, err := agentgo.Run(ctx, agent1, "用一句话介绍你自己")
 			if err != nil {
 					log.Printf("运行失败: %v\n", err)
 			} else {

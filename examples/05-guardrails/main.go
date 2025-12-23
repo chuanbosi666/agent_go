@@ -1,4 +1,4 @@
-// Package main 演示 nvgo 的 Guardrails（护栏）功能
+// Package main 演示 agentgo 的 Guardrails（护栏）功能
 //
 // Guardrails 用于在 Agent 执行前后进行安全检查:
 //   - InputGuardrail: 检查用户输入，防止恶意或不当内容
@@ -22,7 +22,7 @@ import (
 	"os"
 	"strings"
 
-	nvgo "nvgo"
+	agentgo "github.com/chuanbosi666/agent_go"
 	"github.com/openai/openai-go/v3"
 )
 
@@ -33,17 +33,17 @@ var sensitiveWords = []string{"密码", "信用卡", "银行卡号", "身份证"
 var forbiddenTopics = []string{"非法", "暴力", "犯罪"}
 
 // 创建输入护栏：检查敏感信息
-func createSensitiveInfoGuardrail() nvgo.InputGuardrail {
-	return nvgo.NewInputGuardrail("sensitive_info_check",
-		func(ctx context.Context, agent nvgo.AgentLike, input nvgo.Input) (nvgo.GuardrailFunctionOutput, error) {
+func createSensitiveInfoGuardrail() agentgo.InputGuardrail {
+	return agentgo.NewInputGuardrail("sensitive_info_check",
+		func(ctx context.Context, agent agentgo.AgentLike, input agentgo.Input) (agentgo.GuardrailFunctionOutput, error) {
 			// 获取输入文本
 			var inputText string
 			switch v := input.(type) {
-			case nvgo.InputString:
+			case agentgo.InputString:
 				inputText = string(v)
 			default:
 				// 其他类型暂不检查
-				return nvgo.GuardrailFunctionOutput{
+				return agentgo.GuardrailFunctionOutput{
 					TripwireTriggered: false,
 				}, nil
 			}
@@ -51,7 +51,7 @@ func createSensitiveInfoGuardrail() nvgo.InputGuardrail {
 			// 检查是否包含敏感词
 			for _, word := range sensitiveWords {
 				if strings.Contains(inputText, word) {
-					return nvgo.GuardrailFunctionOutput{
+					return agentgo.GuardrailFunctionOutput{
 						TripwireTriggered: true,
 						OutputInfo: map[string]any{
 							"reason":         "输入包含敏感信息",
@@ -61,7 +61,7 @@ func createSensitiveInfoGuardrail() nvgo.InputGuardrail {
 				}
 			}
 
-			return nvgo.GuardrailFunctionOutput{
+			return agentgo.GuardrailFunctionOutput{
 				TripwireTriggered: false,
 				OutputInfo:        "输入检查通过",
 			}, nil
@@ -69,20 +69,20 @@ func createSensitiveInfoGuardrail() nvgo.InputGuardrail {
 }
 
 // 创建输入护栏：检查禁止话题
-func createForbiddenTopicGuardrail() nvgo.InputGuardrail {
-	return nvgo.NewInputGuardrail("forbidden_topic_check",
-		func(ctx context.Context, agent nvgo.AgentLike, input nvgo.Input) (nvgo.GuardrailFunctionOutput, error) {
+func createForbiddenTopicGuardrail() agentgo.InputGuardrail {
+	return agentgo.NewInputGuardrail("forbidden_topic_check",
+		func(ctx context.Context, agent agentgo.AgentLike, input agentgo.Input) (agentgo.GuardrailFunctionOutput, error) {
 			var inputText string
 			switch v := input.(type) {
-			case nvgo.InputString:
+			case agentgo.InputString:
 				inputText = string(v)
 			default:
-				return nvgo.GuardrailFunctionOutput{TripwireTriggered: false}, nil
+				return agentgo.GuardrailFunctionOutput{TripwireTriggered: false}, nil
 			}
 
 			for _, topic := range forbiddenTopics {
 				if strings.Contains(inputText, topic) {
-					return nvgo.GuardrailFunctionOutput{
+					return agentgo.GuardrailFunctionOutput{
 						TripwireTriggered: true,
 						OutputInfo: map[string]any{
 							"reason": "涉及禁止话题",
@@ -92,18 +92,18 @@ func createForbiddenTopicGuardrail() nvgo.InputGuardrail {
 				}
 			}
 
-			return nvgo.GuardrailFunctionOutput{TripwireTriggered: false}, nil
+			return agentgo.GuardrailFunctionOutput{TripwireTriggered: false}, nil
 		})
 }
 
 // 创建输出护栏：检查输出长度
-func createOutputLengthGuardrail(maxLength int) nvgo.OutputGuardrail {
-	return nvgo.NewOutputGuardrail("output_length_check",
-		func(ctx context.Context, agent nvgo.AgentLike, output any) (nvgo.GuardrailFunctionOutput, error) {
+func createOutputLengthGuardrail(maxLength int) agentgo.OutputGuardrail {
+	return agentgo.NewOutputGuardrail("output_length_check",
+		func(ctx context.Context, agent agentgo.AgentLike, output any) (agentgo.GuardrailFunctionOutput, error) {
 			outputStr := fmt.Sprintf("%v", output)
 
 			if len(outputStr) > maxLength {
-				return nvgo.GuardrailFunctionOutput{
+				return agentgo.GuardrailFunctionOutput{
 					TripwireTriggered: true,
 					OutputInfo: map[string]any{
 						"reason":     "输出超过长度限制",
@@ -113,7 +113,7 @@ func createOutputLengthGuardrail(maxLength int) nvgo.OutputGuardrail {
 				}, nil
 			}
 
-			return nvgo.GuardrailFunctionOutput{
+			return agentgo.GuardrailFunctionOutput{
 				TripwireTriggered: false,
 				OutputInfo: map[string]any{
 					"length": len(outputStr),
@@ -123,11 +123,11 @@ func createOutputLengthGuardrail(maxLength int) nvgo.OutputGuardrail {
 }
 
 // 创建输出护栏：检查输出中是否包含不当内容
-func createContentSafetyGuardrail() nvgo.OutputGuardrail {
+func createContentSafetyGuardrail() agentgo.OutputGuardrail {
 	blockedPhrases := []string{"我无法", "我不能", "作为AI"}
 
-	return nvgo.NewOutputGuardrail("content_safety_check",
-		func(ctx context.Context, agent nvgo.AgentLike, output any) (nvgo.GuardrailFunctionOutput, error) {
+	return agentgo.NewOutputGuardrail("content_safety_check",
+		func(ctx context.Context, agent agentgo.AgentLike, output any) (agentgo.GuardrailFunctionOutput, error) {
 			outputStr := fmt.Sprintf("%v", output)
 
 			// 这里只是演示，实际可以调用内容安全API
@@ -135,7 +135,7 @@ func createContentSafetyGuardrail() nvgo.OutputGuardrail {
 				if strings.Contains(outputStr, phrase) {
 					// 注意：这里我们不触发tripwire，只是记录
 					// 实际使用中可以根据需要决定是否阻止
-					return nvgo.GuardrailFunctionOutput{
+					return agentgo.GuardrailFunctionOutput{
 						TripwireTriggered: false, // 不阻止，只记录
 						OutputInfo: map[string]any{
 							"warning": "检测到可能的模式化回复",
@@ -145,7 +145,7 @@ func createContentSafetyGuardrail() nvgo.OutputGuardrail {
 				}
 			}
 
-			return nvgo.GuardrailFunctionOutput{
+			return agentgo.GuardrailFunctionOutput{
 				TripwireTriggered: false,
 				OutputInfo:        "内容安全检查通过",
 			}, nil
@@ -163,15 +163,15 @@ func main() {
 	client := openai.NewClient()
 
 	// 创建带护栏的 Agent
-	agent := nvgo.New("安全助手").
+	agent := agentgo.New("安全助手").
 		WithInstructions("你是一个安全的 AI 助手，请礼貌地回答用户问题。").
 		WithModel("gpt-4o-mini").
 		WithClient(client).
-		WithInputGuardrails([]nvgo.InputGuardrail{
+		WithInputGuardrails([]agentgo.InputGuardrail{
 			createSensitiveInfoGuardrail(),
 			createForbiddenTopicGuardrail(),
 		}).
-		WithOutputGuardrails([]nvgo.OutputGuardrail{
+		WithOutputGuardrails([]agentgo.OutputGuardrail{
 			createOutputLengthGuardrail(1000),
 			createContentSafetyGuardrail(),
 		})
@@ -206,18 +206,18 @@ func main() {
 		},
 	}
 
-	fmt.Println("=== Guardrails 护栏演示 ===\n")
+	fmt.Println("=== Guardrails 护栏演示 ===")
 
 	for _, tc := range testCases {
 		fmt.Printf("测试: %s\n", tc.name)
 		fmt.Printf("输入: %s\n", tc.input)
 		fmt.Printf("预期: %s\n", tc.expect)
 
-		result, err := nvgo.Run(ctx, agent, tc.input)
+		result, err := agentgo.Run(ctx, agent, tc.input)
 
 		if err != nil {
 			// 检查是否是护栏触发的错误
-			if guardrailErr, ok := err.(*nvgo.GuardrailTripwireTriggeredError); ok {
+			if guardrailErr, ok := err.(*agentgo.GuardrailTripwireTriggeredError); ok {
 				fmt.Printf("结果: 被护栏拦截 ✓\n")
 				fmt.Printf("护栏: %s\n", guardrailErr.GuardrailName)
 				fmt.Printf("详情: %v\n", guardrailErr.OutputInfo)

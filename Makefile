@@ -35,7 +35,7 @@ test:
 .PHONY: docs
 docs:
 	@echo "Starting godoc server at http://localhost:6060"
-	@echo "Visit http://localhost:6060/pkg/github.com/demo/nvgo/ to view your package documentation"
+	@echo "Visit http://localhost:6060/pkg/github.com/demo/github.com/chuanbosi666/agent_go/ to view your package documentation"
 	godoc -http=:6060
 
 # Pre-commit: run all checks before commit

@@ -1,4 +1,4 @@
-// Package main 演示 nvgo 的 ReAct 模式
+// Package main 演示 agentgo 的 ReAct 模式
 //
 // ReAct (Reasoning + Acting) 是一种让 Agent 按照
 // "思考 -> 行动 -> 观察" 循环来解决问题的模式。
@@ -26,13 +26,13 @@ import (
 	"log"
 	"os"
 
-	nvgo "nvgo"
+	agentgo "github.com/chuanbosi666/agent_go"
 	"github.com/openai/openai-go/v3"
 )
 
 // 模拟的知识库数据
 var knowledgeBase = map[string]string{
-	"nvgo":    "nvgo 是一个 Go 语言的 AI Agent 框架，参考 OpenAI Agents SDK 设计。支持工具调用、Guardrails、Session 管理等功能。",
+	"agentgo":    "agentgo 是一个 Go 语言的 AI Agent 框架，参考 OpenAI Agents SDK 设计。支持工具调用、Guardrails、Session 管理等功能。",
 	"agent":   "Agent 是 AI 系统中的智能实体，能够感知环境、做出决策并执行动作来实现目标。",
 	"react":   "ReAct 是 Reasoning + Acting 的缩写，是一种让 AI 系统交替进行推理和行动的方法论。",
 	"tool":    "Tool（工具）是 Agent 可以调用的外部功能，如搜索、计算、API调用等。",
@@ -40,8 +40,8 @@ var knowledgeBase = map[string]string{
 }
 
 // 创建搜索工具
-func createSearchTool() nvgo.FunctionTool {
-	return nvgo.FunctionTool{
+func createSearchTool() agentgo.FunctionTool {
+	return agentgo.FunctionTool{
 		Name:        "search_knowledge",
 		Description: "在知识库中搜索相关信息。输入关键词，返回匹配的内容。",
 		ParamsJSONSchema: map[string]any{
@@ -71,8 +71,8 @@ func createSearchTool() nvgo.FunctionTool {
 }
 
 // 创建列表工具
-func createListTopicsTool() nvgo.FunctionTool {
-	return nvgo.FunctionTool{
+func createListTopicsTool() agentgo.FunctionTool {
+	return agentgo.FunctionTool{
 		Name:        "list_topics",
 		Description: "列出知识库中所有可用的主题",
 		ParamsJSONSchema: map[string]any{
@@ -90,8 +90,8 @@ func createListTopicsTool() nvgo.FunctionTool {
 }
 
 // 创建总结工具
-func createSummarizeTool() nvgo.FunctionTool {
-	return nvgo.FunctionTool{
+func createSummarizeTool() agentgo.FunctionTool {
+	return agentgo.FunctionTool{
 		Name:        "summarize",
 		Description: "总结收集到的信息",
 		ParamsJSONSchema: map[string]any{
@@ -132,24 +132,24 @@ func main() {
 	// 创建客户端
 	client := openai.NewClient()
 
-	// 使用 nvgo 内置的 ReAct 指令
+	// 使用 agentgo 内置的 ReAct 指令
 	// DefaultReActInstruction 提供了标准的 ReAct 格式提示词
-	reactInstructions := nvgo.DefaultReActInstruction
+	reactInstructions := agentgo.DefaultReActInstruction
 
 	// 创建 ReAct Agent
-	agent := nvgo.New("ReAct研究员").
+	agent := agentgo.New("ReAct研究员").
 		WithInstructionsGetter(reactInstructions).
 		WithModel("gpt-4o-mini").
 		WithClient(client).
-		WithTools([]nvgo.FunctionTool{
+		WithTools([]agentgo.FunctionTool{
 			createSearchTool(),
 			createListTopicsTool(),
 			createSummarizeTool(),
 		})
 
 	// 配置 Runner
-	runner := nvgo.Runner{
-		Config: nvgo.RunConfig{
+	runner := agentgo.Runner{
+		Config: agentgo.RunConfig{
 			MaxTurns: 10, // ReAct 可能需要多轮迭代
 		},
 	}
@@ -157,7 +157,7 @@ func main() {
 	ctx := context.Background()
 
 	// 测试问题 - 需要多步推理的任务
-	question := "请帮我了解 nvgo 框架，包括它是什么、有什么功能。先列出可用主题，然后搜索相关信息，最后总结。"
+	question := "请帮我了解 agentgo 框架，包括它是什么、有什么功能。先列出可用主题，然后搜索相关信息，最后总结。"
 
 	fmt.Println("=== ReAct 模式演示 ===")
 	fmt.Printf("问题: %s\n", question)

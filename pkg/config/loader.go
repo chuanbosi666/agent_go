@@ -35,11 +35,11 @@ func SaveToFile(registry *ModelRegistry, filename string) error{
 
 	data, err := json.MarshalIndent(configs, "", " ")
 	if err != nil{
-		return fmt.Errorf("序列化配置失败：%W", err)
+		return fmt.Errorf("序列化配置失败：%w", err)
 	}
 	
 	if err := os.WriteFile(filename, data, 0644); err != nil{
-		return fmt.Errorf("写入文件 '%S' 失败：%w", filename, err)
+		return fmt.Errorf("写入文件 '%s' 失败：%w", filename, err)
 	}
 
 	return nil
