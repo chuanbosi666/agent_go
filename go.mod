@@ -3,7 +3,7 @@ module github.com/chuanbosi666/agent_go
 go 1.25
 
 require (
-	github.com/google/jsonschema-go v0.2.0
+	github.com/google/jsonschema-go v0.4.2
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/modelcontextprotocol/go-sdk v0.3.0
 	github.com/openai/openai-go/v3 v3.7.0
