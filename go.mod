@@ -7,7 +7,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/modelcontextprotocol/go-sdk v0.3.0
 	github.com/openai/openai-go/v3 v3.7.0
-	github.com/stretchr/testify v1.11.0
+	github.com/stretchr/testify v1.11.1
 )
 
 require (
